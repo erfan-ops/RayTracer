@@ -1,1 +1,41 @@
-/build
+# Build directories
+/build/
+/build-*/
+/out/
+/cmake-build-*/
+
+# CMake generated files
+CMakeCache.txt
+CMakeFiles/
+CMakeUserPresets.json
+cmake_install.cmake
+CTestTestfile.cmake
+Testing/
+.vs/
+*.sln
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+
+# Ninja generated files
+.ninja_deps
+.ninja_log
+build.ninja
+rules.ninja
+
+# Compiler and linker output. Note that "*.lib" and "*.dll" are deliberately
+# not listed: lib/ ships the FFmpeg import libraries and bin/ ships the
+# runtime DLLs, and both are tracked.
+*.o
+*.obj
+*.exe
+*.pdb
+*.ilk
+*.exp
+*.idb
+*.gcda
+*.gcno
+
+# Tooling
+compile_commands.json
+.cache/
