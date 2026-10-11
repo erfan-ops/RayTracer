@@ -1,0 +1,5 @@
+* text=auto
+
+include/** linguist-vendored
+lib/** linguist-vendored
+bin/** linguist-vendored
