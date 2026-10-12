@@ -184,16 +184,20 @@ endfunction()
 # ============================================================
 
 set(APP_SOURCES
+    src/Camera.cpp
     src/Image.cpp
     src/main.cpp
+    src/Ray.cpp
     src/Renderer.cpp
-    # src/RayTracer.cpp
+    src/Vec3.cpp
 )
 
 set(HEADERS
+    headers/Camera.hpp
     headers/Image.hpp
+    headers/Ray.hpp
     headers/Renderer.hpp
-    # headers/RayTracer.hpp
+    headers/Vec3.hpp
 )
 
 # ============================================================

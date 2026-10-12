@@ -1,31 +1,95 @@
 {
     "version": 3,
+    "cmakeMinimumRequired": {
+        "major": 3,
+        "minor": 30,
+        "patch": 0
+    },
     "configurePresets": [
         {
             "name": "vs-release",
             "displayName": "Visual Studio 2022 - Release",
             "generator": "Visual Studio 17 2022",
-            "binaryDir": "${sourceDir}/build",
-            "cacheVariables": {}
+            "binaryDir": "${sourceDir}/build/vs",
+            "cacheVariables": {
+                "CMAKE_CONFIGURATION_TYPES": "Release;Debug"
+            }
         },
         {
             "name": "vs-debug",
             "displayName": "Visual Studio 2022 - Debug",
             "generator": "Visual Studio 17 2022",
-            "binaryDir": "${sourceDir}/build",
-            "cacheVariables": {}
+            "binaryDir": "${sourceDir}/build/vs",
+            "cacheVariables": {
+                "CMAKE_CONFIGURATION_TYPES": "Release;Debug"
+            }
+        },
+        {
+            "name": "ninja-clang-release",
+            "displayName": "Ninja - Clang - Release",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build/ninja-clang",
+            "cacheVariables": {
+                "CMAKE_C_COMPILER": "clang-cl",
+                "CMAKE_CXX_COMPILER": "clang-cl",
+                "CMAKE_BUILD_TYPE": "Release",
+                "CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE": "ON",
+                "RAYTRACER_BUILD_TESTS": "ON"
+            }
+        },
+        {
+            "name": "ninja-clang-debug",
+            "displayName": "Ninja - Clang - Debug",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build/ninja-clang",
+            "cacheVariables": {
+                "CMAKE_C_COMPILER": "clang-cl",
+                "CMAKE_CXX_COMPILER": "clang-cl",
+                "CMAKE_BUILD_TYPE": "Debug",
+                "RAYTRACER_BUILD_TESTS": "ON"
+            }
         }
     ],
     "buildPresets": [
         {
             "name": "release",
+            "displayName": "Visual Studio - Release",
             "configurePreset": "vs-release",
             "configuration": "Release"
         },
         {
             "name": "debug",
+            "displayName": "Visual Studio - Debug",
             "configurePreset": "vs-debug",
             "configuration": "Debug"
+        },
+        {
+            "name": "ninja-release",
+            "displayName": "Ninja - Clang - Release",
+            "configurePreset": "ninja-clang-release"
+        },
+        {
+            "name": "ninja-debug",
+            "displayName": "Ninja - Clang - Debug",
+            "configurePreset": "ninja-clang-debug"
+        }
+    ],
+    "testPresets": [
+        {
+            "name": "ninja-release",
+            "configurePreset": "ninja-clang-release",
+            "configuration": "Release",
+            "output": {
+                "outputOnFailure": true
+            }
+        },
+        {
+            "name": "ninja-debug",
+            "configurePreset": "ninja-clang-debug",
+            "configuration": "Debug",
+            "output": {
+                "outputOnFailure": true
+            }
         }
     ]
 }
