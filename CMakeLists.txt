@@ -185,18 +185,26 @@ endfunction()
 
 set(APP_SOURCES
     src/Camera.cpp
+    src/HittableList.cpp
     src/Image.cpp
+    src/Interval.cpp
     src/main.cpp
     src/Ray.cpp
     src/Renderer.cpp
+    src/Sphere.cpp
     src/Vec3.cpp
 )
 
 set(HEADERS
     headers/Camera.hpp
+    headers/Common.hpp
+    headers/Hittable.hpp
+    headers/HittableList.hpp
     headers/Image.hpp
+    headers/Interval.hpp
     headers/Ray.hpp
     headers/Renderer.hpp
+    headers/Sphere.hpp
     headers/Vec3.hpp
 )
 

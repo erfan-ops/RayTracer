@@ -39,3 +39,6 @@ rules.ninja
 # Tooling
 compile_commands.json
 .cache/
+
+# output images
+/out

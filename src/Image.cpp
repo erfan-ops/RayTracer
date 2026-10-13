@@ -1,4 +1,4 @@
-#include "Image.hpp"
+#include <Image.hpp>
 
 #include <algorithm>
 #include <cstdint>

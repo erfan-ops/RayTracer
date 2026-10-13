@@ -1,4 +1,5 @@
 #include <Renderer.hpp>
+#include <Interval.hpp>
 
 
 Renderer::Renderer(size_t width, size_t height)
@@ -11,9 +12,10 @@ void Renderer::write_color(const Color& pixel_color) {
     auto g = pixel_color.y();
     auto b = pixel_color.z();
 
-    unsigned char rbyte = static_cast<unsigned char>(255.999 * r);
-    unsigned char gbyte = static_cast<unsigned char>(255.999 * g);
-    unsigned char bbyte = static_cast<unsigned char>(255.999 * b);
+    static const Interval intensity(0.000, 0.999);
+    unsigned char rbyte = static_cast<unsigned char>(256.0f * intensity.clamp(r));
+    unsigned char gbyte = static_cast<unsigned char>(256.0f * intensity.clamp(g));
+    unsigned char bbyte = static_cast<unsigned char>(256.0f * intensity.clamp(b));
 
     m_img[m_idx++] = rbyte;
     m_img[m_idx++] = gbyte;

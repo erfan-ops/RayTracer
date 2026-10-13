@@ -2,6 +2,7 @@
 
 #include <Vec3.hpp>
 #include <Renderer.hpp>
+#include <HittableList.hpp>
 
 class Camera {
 public:
@@ -9,14 +10,18 @@ public:
         const float focalLength,
         const Point3 &center,
         const size_t imageWidth,
-        const size_t imageHeight
+        const size_t imageHeight,
+        const int samplesPerPixel = 10
     );
     ~Camera();
 
-    const unsigned char* shot() const;
+    const unsigned char* shot(HittableList world) const;
 
     const size_t width() const;
     const size_t height() const;
+
+private:
+    Ray get_ray(int i, int j) const;
 
 private:
     size_t m_imageWidth;
@@ -38,4 +43,7 @@ private:
     Vec3 m_pixel00Loc;
 
     Renderer* m_renderer{nullptr};
+
+    int m_samplesPerPixel;
+    float m_pixelSamplesScale;
 };
