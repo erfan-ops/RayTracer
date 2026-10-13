@@ -68,6 +68,7 @@ Camera::~Camera() {
 
 const unsigned char* Camera::shot(HittableList world) const {
     for (int j = 0; j < m_imageHeight; j++) {
+        std::cout << '\r' << j << '/' << height();
         for (int i = 0; i < m_imageWidth; i++) {
             auto pixel_center = m_pixel00Loc + (i * m_pixelDeltaU) + (j * m_pixelDeltaV);
             auto ray_direction = pixel_center - m_center;
