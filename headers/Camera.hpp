@@ -7,12 +7,14 @@
 class Camera {
 public:
     Camera(
-        const double focalLength,
-        const Point3 &center,
+        const double verticalFOV,
+        const Point3 &lookfrom,
+        const Point3 &lookat,
+        const Vec3 &vup,
         const size_t imageWidth,
         const size_t imageHeight,
-        const int samplesPerPixel = 10,
-        const int maxDepth = 10
+        const int samplesPerPixel,
+        const int maxDepth
     );
     ~Camera();
 
@@ -31,9 +33,9 @@ private:
     size_t m_imageHeight;
 
     double m_viewportWidth;
-    double m_viewportHeight{2.0};
+    double m_viewportHeight;
 
-    double m_focalLength;
+    double m_focalLength{1.0};
     Point3 m_center;
 
     Vec3 m_viewportU;
@@ -50,4 +52,8 @@ private:
     int m_samplesPerPixel;
     double m_pixelSamplesScale;
     int m_maxDepth;
+
+    double m_vfov = 90;  // Vertical view angle (field of view)
+
+    Vec3   u, v, w;
 };

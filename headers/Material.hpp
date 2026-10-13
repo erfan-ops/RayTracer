@@ -31,6 +31,7 @@ private:
     Color m_albedo;
 };
 
+
 class Metal : public Material {
 public:
     Metal(const Color& albedo, double fuzz);
@@ -42,7 +43,31 @@ public:
         Ray& scattered
     ) const override;
 
-  private:
+private:
     Color m_albedo;
     double m_fuzz;
+};
+
+
+class Dielectric : public Material {
+public:
+    Dielectric(double refraction_index);
+
+    bool scatter(
+        const Ray& r_in,
+        const HitRecord& rec,
+        Color& attenuation,
+        Ray& scattered
+    ) const override;
+
+private:
+    static double reflectance(double cosine, double refraction_index) {
+        // Use Schlick's approximation for reflectance.
+        double r0 = (1.0 - refraction_index) / (1.0 + refraction_index);
+        r0 = r0*r0;
+        return r0 + (1.0-r0)*std::pow((1.0 - cosine),5.0);
+    }
+
+private:
+    double m_refractionIndex;
 };

@@ -22,29 +22,39 @@ double hit_sphere(const Point3& center, double radius, const Ray& r) {
 
 
 Camera::Camera(
-    const double focalLength,
-    const Point3 &center,
+    const double verticalFOV,
+    const Point3 &lookfrom,
+    const Point3 &lookat,
+    const Vec3 &vup,
     const size_t imageWidth,
     const size_t imageHeight,
     const int samplesPerPixel,
     const int maxDepth
-) : m_focalLength(focalLength)
-  , m_center(center)
+) : m_vfov(verticalFOV)
+  , m_center(lookfrom)
   , m_renderer(new Renderer(imageWidth, imageHeight))
   , m_imageWidth(imageWidth)
   , m_imageHeight(imageHeight)
   , m_samplesPerPixel(samplesPerPixel)
   , m_maxDepth(maxDepth)
 {
+    m_focalLength = (lookfrom - lookat).length();
+    w = unit_vector(lookfrom - lookat);
+    u = unit_vector(cross(vup, w));
+    v = cross(w, u);
+
+    double theta = degrees_to_radians(m_vfov);
+    double h = std::tan(theta/2.0);
+    m_viewportHeight = 2.0 * h * m_focalLength;
     m_viewportWidth = m_viewportHeight * static_cast<double>(imageWidth)/static_cast<double>(imageHeight);
 
-    m_viewportU = Vec3(m_viewportWidth, 0.0, 0.0);
-    m_viewportV = Vec3(0.0, -m_viewportHeight, 0.0);
+    m_viewportU = m_viewportWidth * u;
+    m_viewportV = m_viewportHeight * -v;
 
     m_pixelDeltaU = m_viewportU / imageWidth;
     m_pixelDeltaV = m_viewportV / imageHeight;
 
-    m_viewportUpperLeft = m_center - Vec3(0.0, 0.0, m_focalLength) - m_viewportU*0.5 - m_viewportV*0.5;
+    m_viewportUpperLeft = m_center - (m_focalLength * w) - m_viewportU*0.5 - m_viewportV*0.5;
     m_pixel00Loc = m_viewportUpperLeft + 0.5 * (m_pixelDeltaU + m_pixelDeltaV);
 
     m_pixelSamplesScale = 1.0 / m_samplesPerPixel;
