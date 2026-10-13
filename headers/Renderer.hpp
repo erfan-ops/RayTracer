@@ -7,7 +7,7 @@ class Renderer {
 public:
     Renderer(size_t width, size_t height);
 
-    void write_color(const Color& pixel_color);
+    void write_color(const Color& pixel_color, size_t idx);
 
     const unsigned char* get_image() const;
     const size_t width() const;

@@ -10,8 +10,8 @@
 int main() {
     Image image{};
 
-    const size_t width = 1280ull;
-    const size_t height = 720ull;
+    const size_t width = 1920ull;
+    const size_t height = 1080ull;
 
     // Create camera
     Camera cam(
@@ -46,7 +46,7 @@ int main() {
     static std::uniform_real_distribution<double> materialChoice(0.0, 1.0);
 
     // Generate a grid of spheres
-    constexpr int gridSize = 11;
+    constexpr int gridSize = 8;
 
     for (int a = -gridSize; a < gridSize; ++a) {
         for (int b = -gridSize; b < gridSize; ++b) {

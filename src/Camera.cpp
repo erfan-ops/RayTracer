@@ -5,6 +5,8 @@
 #include <Sphere.hpp>
 #include <Interval.hpp>
 
+#include <thread>
+
 
 double hit_sphere(const Point3& center, double radius, const Ray& r) {
     Vec3 oc = center - r.origin();
@@ -67,21 +69,53 @@ Camera::~Camera() {
 
 
 const unsigned char* Camera::shot(HittableList world) const {
-    for (int j = 0; j < m_imageHeight; j++) {
-        std::cout << '\r' << j << '/' << height();
-        for (int i = 0; i < m_imageWidth; i++) {
-            auto pixel_center = m_pixel00Loc + (i * m_pixelDeltaU) + (j * m_pixelDeltaV);
-            auto ray_direction = pixel_center - m_center;
-            Ray r(m_center, ray_direction);
+    constexpr int nThreads = 6;
 
-            Color pixel_color(0.0, 0.0, 0.0);
-            for (int sample = 0; sample < m_samplesPerPixel; sample++) {
-                Ray r = get_ray(i, j);
-                pixel_color += ray_color(r, m_maxDepth, world);
+    std::vector<std::thread> threads;
+    threads.reserve(nThreads);
+
+    for (int threadIdx = 0; threadIdx < nThreads; threadIdx++) {
+        threads.emplace_back([this, &world, threadIdx, nThreads]() {
+            for (int j = threadIdx; j < m_imageHeight; j += nThreads) {
+                std::cout << '\r' << j << "                    ";
+
+                for (int i = 0; i < m_imageWidth; i++) {
+                    auto pixel_center =
+                        m_pixel00Loc + (i * m_pixelDeltaU) + (j * m_pixelDeltaV);
+
+                    auto ray_direction = pixel_center - m_center;
+
+                    Color pixel_color(0.0, 0.0, 0.0);
+
+                    for (int sample = 0; sample < m_samplesPerPixel; sample++) {
+                        Ray r = get_ray(i, j);
+                        pixel_color += ray_color(r, m_maxDepth, world);
+                    }
+
+                    m_renderer->write_color(m_pixelSamplesScale * pixel_color, 3ull * (j * m_imageWidth + i));
+                }
             }
-            m_renderer->write_color(m_pixelSamplesScale * pixel_color);
-        }
+        });
     }
+
+    for (auto& thread : threads) {
+        thread.join();
+    }
+    // for (int j = 0; j < m_imageHeight; j++) {
+    //     std::cout << '\r' << j << '/' << height();
+    //     for (int i = 0; i < m_imageWidth; i++) {
+    //         auto pixel_center = m_pixel00Loc + (i * m_pixelDeltaU) + (j * m_pixelDeltaV);
+    //         auto ray_direction = pixel_center - m_center;
+    //         Ray r(m_center, ray_direction);
+
+    //         Color pixel_color(0.0, 0.0, 0.0);
+    //         for (int sample = 0; sample < m_samplesPerPixel; sample++) {
+    //             Ray r = get_ray(i, j);
+    //             pixel_color += ray_color(r, m_maxDepth, world);
+    //         }
+    //         m_renderer->write_color(m_pixelSamplesScale * pixel_color);
+    //     }
+    // }
 
     return m_renderer->get_image();
 }

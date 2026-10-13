@@ -15,7 +15,7 @@ static inline double linear_to_gamma(double linear_component)
     return 0;
 }
 
-void Renderer::write_color(const Color& pixel_color) {
+void Renderer::write_color(const Color& pixel_color, size_t idx) {
     auto r = linear_to_gamma(pixel_color.r());
     auto g = linear_to_gamma(pixel_color.g());
     auto b = linear_to_gamma(pixel_color.b());
@@ -25,9 +25,9 @@ void Renderer::write_color(const Color& pixel_color) {
     unsigned char gbyte = static_cast<unsigned char>(256.0 * intensity.clamp(g));
     unsigned char bbyte = static_cast<unsigned char>(256.0 * intensity.clamp(b));
 
-    m_img[m_idx++] = rbyte;
-    m_img[m_idx++] = gbyte;
-    m_img[m_idx++] = bbyte;
+    m_img[idx] = rbyte;
+    m_img[idx + 1] = gbyte;
+    m_img[idx + 2] = bbyte;
 }
 
 const unsigned char* Renderer::get_image() const { return m_img; }
