@@ -11,7 +11,8 @@ public:
         const Point3 &center,
         const size_t imageWidth,
         const size_t imageHeight,
-        const int samplesPerPixel = 10
+        const int samplesPerPixel = 10,
+        const int maxDepth = 10
     );
     ~Camera();
 
@@ -23,12 +24,14 @@ public:
 private:
     Ray get_ray(int i, int j) const;
 
+    Color ray_color(const Ray& r, const int depth, const Hittable& world) const;
+
 private:
     size_t m_imageWidth;
     size_t m_imageHeight;
 
     double m_viewportWidth;
-    double m_viewportHeight{2.0f};
+    double m_viewportHeight{2.0};
 
     double m_focalLength;
     Point3 m_center;
@@ -46,4 +49,5 @@ private:
 
     int m_samplesPerPixel;
     double m_pixelSamplesScale;
+    int m_maxDepth;
 };

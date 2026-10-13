@@ -189,6 +189,7 @@ set(APP_SOURCES
     src/Image.cpp
     src/Interval.cpp
     src/main.cpp
+    src/Material.cpp
     src/Ray.cpp
     src/Renderer.cpp
     src/Sphere.cpp
@@ -202,6 +203,7 @@ set(HEADERS
     headers/HittableList.hpp
     headers/Image.hpp
     headers/Interval.hpp
+    headers/Material.hpp
     headers/Ray.hpp
     headers/Renderer.hpp
     headers/Sphere.hpp

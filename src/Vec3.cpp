@@ -43,6 +43,11 @@ double Vec3::length_squared() const {
     return e[0] * e[0] + e[1] * e[1] + e[2] * e[2];
 }
 
+bool Vec3::near_zero() const {
+    auto s = 1e-8;
+    return (std::fabs(e[0]) < s) && (std::fabs(e[1]) < s) && (std::fabs(e[2]) < s);
+}
+
 Vec3 Vec3::random() {
     return Vec3(random_double(), random_double(), random_double());
 }

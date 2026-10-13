@@ -30,6 +30,8 @@ public:
     double length() const;
     double length_squared() const;
 
+    bool near_zero() const;
+
     static Vec3 random();
     static Vec3 random(double min, double max);
 
@@ -37,8 +39,9 @@ public:
     double e[3];
 };
 
-// point3 is just an alias for Vec3, but useful for geometric clarity in the code.
+
 using Point3 = Vec3;
+using Color = Vec3;
 
 // Vector Utility Functions
 
@@ -105,4 +108,8 @@ inline Vec3 random_on_hemisphere(const Vec3& normal) {
     Vec3 v = random_unit_vector();
 
     return dot(v, normal) >= 0.0 ? v : -v;
+}
+
+inline Vec3 reflect(const Vec3& v, const Vec3& n) {
+    return v - 2*dot(v,n)*n;
 }
