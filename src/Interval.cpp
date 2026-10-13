@@ -3,29 +3,29 @@
 
 Interval::Interval() : m_min(+infinity), m_max(-infinity) {} // Default interval is empty
 
-Interval::Interval(float min, float max) : m_min(min), m_max(max) {}
+Interval::Interval(double min, double max) : m_min(min), m_max(max) {}
 
-float Interval::size() const {
+double Interval::size() const {
     return m_max - m_min;
 }
 
-bool Interval::contains(float x) const {
+bool Interval::contains(double x) const {
     return m_min <= x && x <= m_max;
 }
 
-bool Interval::surrounds(float x) const {
+bool Interval::surrounds(double x) const {
     return m_min < x && x < m_max;
 }
 
-float Interval::clamp(float x) const {
+double Interval::clamp(double x) const {
     return std::clamp(x, m_min, m_max);
 }
 
-float Interval::min() const {
+double Interval::min() const {
     return m_min;
 }
 
-float Interval::max() const {
+double Interval::max() const {
     return m_max;
 }
 

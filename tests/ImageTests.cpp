@@ -235,30 +235,30 @@ bool decodeImage(const std::filesystem::path& path, const AVPixelFormat targetFo
 // ------------------------------------------------------------
 
 /// Mean absolute per-channel difference; 0 means identical buffers.
-float meanAbsoluteError(const std::vector<unsigned char>& lhs,
+double meanAbsoluteError(const std::vector<unsigned char>& lhs,
                          const std::vector<unsigned char>& rhs) {
     if (lhs.size() != rhs.size() || lhs.empty()) {
         return 1.0e9;
     }
-    float total = 0.0;
+    double total = 0.0;
     for (std::size_t i = 0; i < lhs.size(); ++i) {
         total += std::abs(static_cast<int>(lhs[i]) - static_cast<int>(rhs[i]));
     }
-    return total / static_cast<float>(lhs.size());
+    return total / static_cast<double>(lhs.size());
 }
 
 /// Mean colour of one rectangular region, used to confirm that a decoded image
 /// still shows the same large-scale structure as the source.
 struct Rgb {
-    float r = 0.0;
-    float g = 0.0;
-    float b = 0.0;
+    double r = 0.0;
+    double g = 0.0;
+    double b = 0.0;
 };
 
 Rgb regionMean(const std::vector<unsigned char>& rgb, const int width, const int x0, const int y0,
                const int x1, const int y1) {
     Rgb mean;
-    float count = 0.0;
+    double count = 0.0;
     for (int y = y0; y < y1; ++y) {
         for (int x = x0; x < x1; ++x) {
             const std::size_t index = (static_cast<std::size_t>(y) * width + x) * 3;
@@ -276,7 +276,7 @@ Rgb regionMean(const std::vector<unsigned char>& rgb, const int width, const int
     return mean;
 }
 
-float channelDistance(const Rgb& lhs, const Rgb& rhs) {
+double channelDistance(const Rgb& lhs, const Rgb& rhs) {
     return std::max({std::abs(lhs.r - rhs.r), std::abs(lhs.g - rhs.g), std::abs(lhs.b - rhs.b)});
 }
 
@@ -486,8 +486,8 @@ int main() {
             CHECK(bestDecoded.width == kWidth && bestDecoded.height == kHeight);
             CHECK_MESSAGE(bestDecoded.codecName == "mjpeg",
                           "file must really be JPEG, got " + bestDecoded.codecName);
-            const float bestError = meanAbsoluteError(bestDecoded.pixels, rgb);
-            const float worstError = meanAbsoluteError(worstDecoded.pixels, rgb);
+            const double bestError = meanAbsoluteError(bestDecoded.pixels, rgb);
+            const double worstError = meanAbsoluteError(worstDecoded.pixels, rgb);
             std::cout << "  MAE at quality 95 = " << bestError << ", at quality 10 = " << worstError
                       << '\n';
             CHECK_MESSAGE(bestError < 12.0, "quality 95 must stay close to the source");

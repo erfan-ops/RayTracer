@@ -6,11 +6,11 @@
 
 class Sphere : public Hittable {
 public:
-    Sphere(const Point3& center, float radius);
+    Sphere(const Point3& center, double radius);
 
     bool hit(const Ray& r, Interval ray_t, HitRecord& rec) const override;
 
 private:
     Point3 m_center;
-    float m_radius;
+    double m_radius;
 };

@@ -1,34 +1,40 @@
 #pragma once
 
+#include <Common.hpp>
+
 #include <cmath>
-#include <iostream>
+#include <numbers>
+
 
 class Vec3 {
 public:
     Vec3();
-    Vec3(float e0, float e1, float e2);
+    Vec3(double e0, double e1, double e2);
 
-    float x() const;
-    float y() const;
-    float z() const;
+    double x() const;
+    double y() const;
+    double z() const;
 
-    float r() const;
-    float g() const;
-    float b() const;
+    double r() const;
+    double g() const;
+    double b() const;
 
     Vec3 operator-() const;
-    float operator[](int i) const;
-    float &operator[](int i);
+    double operator[](int i) const;
+    double &operator[](int i);
 
     Vec3 &operator+=(const Vec3 &v);
-    Vec3 &operator*=(float t);
-    Vec3 &operator/=(float t);
+    Vec3 &operator*=(double t);
+    Vec3 &operator/=(double t);
 
-    float length() const;
-    float length_squared() const;
+    double length() const;
+    double length_squared() const;
+
+    static Vec3 random();
+    static Vec3 random(double min, double max);
 
 public:
-    float e[3];
+    double e[3];
 };
 
 // point3 is just an alias for Vec3, but useful for geometric clarity in the code.
@@ -52,19 +58,19 @@ inline Vec3 operator*(const Vec3 &u, const Vec3 &v) {
     return Vec3(u.e[0] * v.e[0], u.e[1] * v.e[1], u.e[2] * v.e[2]);
 }
 
-inline Vec3 operator*(float t, const Vec3 &v) {
+inline Vec3 operator*(double t, const Vec3 &v) {
     return Vec3(t * v.e[0], t * v.e[1], t * v.e[2]);
 }
 
-inline Vec3 operator*(const Vec3 &v, float t) {
+inline Vec3 operator*(const Vec3 &v, double t) {
     return t * v;
 }
 
-inline Vec3 operator/(const Vec3 &v, float t) {
+inline Vec3 operator/(const Vec3 &v, double t) {
     return (1 / t) * v;
 }
 
-inline float dot(const Vec3 &u, const Vec3 &v) {
+inline double dot(const Vec3 &u, const Vec3 &v) {
     return u.e[0] * v.e[0] + u.e[1] * v.e[1] + u.e[2] * v.e[2];
 }
 
@@ -76,4 +82,27 @@ inline Vec3 cross(const Vec3 &u, const Vec3 &v) {
 
 inline Vec3 unit_vector(const Vec3 &v) {
     return v / v.length();
+}
+
+
+#include <cmath>
+#include <random>
+
+inline Vec3 random_unit_vector() {
+    const auto theta = random_double(0.0, 2.0 * std::numbers::pi);
+    const auto z = random_double(-1.0, 1.0);
+
+    const auto r = std::sqrt(1.0 - z * z);
+
+    return Vec3(
+        r * std::cos(theta),
+        r * std::sin(theta),
+        z
+    );
+}
+
+inline Vec3 random_on_hemisphere(const Vec3& normal) {
+    Vec3 v = random_unit_vector();
+
+    return dot(v, normal) >= 0.0 ? v : -v;
 }

@@ -7,7 +7,7 @@
 class Camera {
 public:
     Camera(
-        const float focalLength,
+        const double focalLength,
         const Point3 &center,
         const size_t imageWidth,
         const size_t imageHeight,
@@ -27,10 +27,10 @@ private:
     size_t m_imageWidth;
     size_t m_imageHeight;
 
-    float m_viewportWidth;
-    float m_viewportHeight{2.0f};
+    double m_viewportWidth;
+    double m_viewportHeight{2.0f};
 
-    float m_focalLength;
+    double m_focalLength;
     Point3 m_center;
 
     Vec3 m_viewportU;
@@ -45,5 +45,5 @@ private:
     Renderer* m_renderer{nullptr};
 
     int m_samplesPerPixel;
-    float m_pixelSamplesScale;
+    double m_pixelSamplesScale;
 };

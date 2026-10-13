@@ -6,24 +6,24 @@ class Interval {
 public:
     Interval();
 
-    Interval(float min, float max);
+    Interval(double min, double max);
 
-    float size() const;
+    double size() const;
 
-    bool contains(float x) const;
+    bool contains(double x) const;
 
-    bool surrounds(float x) const;
+    bool surrounds(double x) const;
 
-    float clamp(float x) const;
+    double clamp(double x) const;
 
-    float min() const;
-    float max() const;
+    double min() const;
+    double max() const;
 
 public:
     static const Interval empty;
     static const Interval universe;
 
 private:
-    float m_min;
-    float m_max;
+    double m_min;
+    double m_max;
 };

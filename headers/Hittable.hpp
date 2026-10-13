@@ -7,7 +7,7 @@ class HitRecord {
 public:
     Point3 p;
     Vec3 normal;
-    float t;
+    double t;
 
     bool front_face;
 

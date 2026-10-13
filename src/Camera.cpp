@@ -6,12 +6,12 @@
 #include <Interval.hpp>
 
 
-float hit_sphere(const Point3& center, float radius, const Ray& r) {
+double hit_sphere(const Point3& center, double radius, const Ray& r) {
     Vec3 oc = center - r.origin();
-    float a = r.direction().length_squared();
-    float h = dot(r.direction(), oc);
-    float c = oc.length_squared() - radius*radius;
-    float discriminant = h*h - a*c;
+    double a = r.direction().length_squared();
+    double h = dot(r.direction(), oc);
+    double c = oc.length_squared() - radius*radius;
+    double discriminant = h*h - a*c;
 
     if (discriminant < 0.0f) {
         return -1.0f;
@@ -23,7 +23,8 @@ float hit_sphere(const Point3& center, float radius, const Ray& r) {
 Color ray_color(const Ray& r, const Hittable& world) {
     HitRecord rec;
     if (world.hit(r, Interval(0, infinity), rec)) {
-        return 0.5 * (rec.normal + Color(1,1,1));
+        Vec3 direction = random_on_hemisphere(rec.normal);
+        return 0.5 * ray_color(Ray(rec.p, direction), world);
     }
     
     Vec3 unit_direction = unit_vector(r.direction());
@@ -33,7 +34,7 @@ Color ray_color(const Ray& r, const Hittable& world) {
 
 
 Camera::Camera(
-    const float focalLength,
+    const double focalLength,
     const Point3 &center,
     const size_t imageWidth,
     const size_t imageHeight,
@@ -45,7 +46,7 @@ Camera::Camera(
   , m_imageHeight(imageHeight)
   , m_samplesPerPixel(samplesPerPixel)
 {
-    m_viewportWidth = m_viewportHeight * static_cast<float>(imageWidth)/static_cast<float>(imageHeight);
+    m_viewportWidth = m_viewportHeight * static_cast<double>(imageWidth)/static_cast<double>(imageHeight);
 
     m_viewportU = Vec3(m_viewportWidth, 0.0f, 0.0f);
     m_viewportV = Vec3(0.0f, -m_viewportHeight, 0.0f);
@@ -86,7 +87,7 @@ const unsigned char* Camera::shot(HittableList world) const {
 
 
 static Vec3 sample_square() {
-    return Vec3(random_float() - 0.5, random_float() - 0.5, 0);
+    return Vec3(random_double() - 0.5, random_double() - 0.5, 0);
     // return Vec3(0.5, 0.5, 0);
 }
 

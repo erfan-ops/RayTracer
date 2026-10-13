@@ -10,7 +10,7 @@ public:
     const Point3 &origin() const;
     const Vec3 &direction() const;
 
-    Point3 at(float t) const;
+    Point3 at(double t) const;
 
 private:
     Point3 m_orig;
