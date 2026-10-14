@@ -31,7 +31,9 @@ Camera::Camera(
     const size_t imageWidth,
     const size_t imageHeight,
     const int samplesPerPixel,
-    const int maxDepth
+    const int maxDepth,
+    const double defocusAngle,
+    const double focusDist
 ) : m_vfov(verticalFOV)
   , m_center(lookfrom)
   , m_renderer(new Renderer(imageWidth, imageHeight))
@@ -39,15 +41,16 @@ Camera::Camera(
   , m_imageHeight(imageHeight)
   , m_samplesPerPixel(samplesPerPixel)
   , m_maxDepth(maxDepth)
+  , m_defocusAngle(defocusAngle)
+  , m_focusDist(focusDist)
 {
-    m_focalLength = (lookfrom - lookat).length();
     w = unit_vector(lookfrom - lookat);
     u = unit_vector(cross(vup, w));
     v = cross(w, u);
 
     double theta = degrees_to_radians(m_vfov);
     double h = std::tan(theta/2.0);
-    m_viewportHeight = 2.0 * h * m_focalLength;
+    m_viewportHeight = 2.0 * h * m_focusDist;
     m_viewportWidth = m_viewportHeight * static_cast<double>(imageWidth)/static_cast<double>(imageHeight);
 
     m_viewportU = m_viewportWidth * u;
@@ -56,8 +59,12 @@ Camera::Camera(
     m_pixelDeltaU = m_viewportU / imageWidth;
     m_pixelDeltaV = m_viewportV / imageHeight;
 
-    m_viewportUpperLeft = m_center - (m_focalLength * w) - m_viewportU*0.5 - m_viewportV*0.5;
+    m_viewportUpperLeft = m_center - (m_focusDist * w) - m_viewportU*0.5 - m_viewportV*0.5;
     m_pixel00Loc = m_viewportUpperLeft + 0.5 * (m_pixelDeltaU + m_pixelDeltaV);
+
+    double defocus_radius = m_focusDist * std::tan(degrees_to_radians(m_defocusAngle * 0.5));
+    m_defocusDiskU = u * defocus_radius;
+    m_defocusDiskV = v * defocus_radius;
 
     m_pixelSamplesScale = 1.0 / m_samplesPerPixel;
 }
@@ -69,7 +76,7 @@ Camera::~Camera() {
 
 
 const unsigned char* Camera::shot(HittableList world) const {
-    constexpr int nThreads = 6;
+    constexpr int nThreads = 12;
 
     std::vector<std::thread> threads;
     threads.reserve(nThreads);
@@ -143,13 +150,18 @@ static Vec3 sample_square() {
     return Vec3(random_double() - 0.5, random_double() - 0.5, 0);
 }
 
+Point3 Camera::defocus_disk_sample() const {
+    auto p = random_in_unit_disk();
+    return m_center + (p[0] * m_defocusDiskU) + (p[1] * m_defocusDiskV);
+}
+
 Ray Camera::get_ray(int i, int j) const {
     auto offset = sample_square();
     auto pixel_sample = m_pixel00Loc
                         + ((i + offset.x()) * m_pixelDeltaU)
                         + ((j + offset.y()) * m_pixelDeltaV);
 
-    auto ray_origin = m_center;
+    auto ray_origin = (m_defocusAngle <= 0) ? m_center : defocus_disk_sample();
     auto ray_direction = pixel_sample - ray_origin;
 
     return Ray(ray_origin, ray_direction);

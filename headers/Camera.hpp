@@ -14,7 +14,9 @@ public:
         const size_t imageWidth,
         const size_t imageHeight,
         const int samplesPerPixel,
-        const int maxDepth
+        const int maxDepth,
+        const double defocus_angle,
+        const double focus_dist
     );
     ~Camera();
 
@@ -27,6 +29,7 @@ private:
     Ray get_ray(int i, int j) const;
 
     Color ray_color(const Ray& r, const int depth, const Hittable& world) const;
+    Point3 defocus_disk_sample() const;
 
 private:
     size_t m_imageWidth;
@@ -55,5 +58,11 @@ private:
 
     double m_vfov = 90;  // Vertical view angle (field of view)
 
-    Vec3   u, v, w;
+    Vec3 u, v, w;
+
+    Vec3 m_defocusDiskU;
+    Vec3 m_defocusDiskV;
+
+    double m_defocusAngle;
+    double m_focusDist;
 };

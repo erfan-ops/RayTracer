@@ -15,14 +15,16 @@ int main() {
 
     // Create camera
     Camera cam(
-        40.0,                           // verticalFOV
-        Point3(13.0, 2.0, 3.0),        // lookfrom
-        Point3(0.0, 0.0, 0.0),         // lookat
-        Vec3(0.0, 1.0, 0.0),           // vup
+        30.0,
+        Point3(13.0, 2.0, 3.0),
+        Point3(0.0, 0.0, 0.0),
+        Vec3(0.0, 1.0, 0.0),
         width,
         height,
-        100,                            // samplesPerPixel
-        20                              // maxDepth
+        200,
+        40,
+        0.6,
+        10.0
     );
 
     // World
@@ -69,7 +71,7 @@ int main() {
 
             std::shared_ptr<Material> material;
 
-            if (choose < 0.7) {
+            if (choose < 0.6) {
                 // Diffuse: multiply two random colors for natural variation.
                 material = std::make_shared<Lambertian>(
                     Color(
@@ -79,7 +81,7 @@ int main() {
                     )
                 );
             }
-            else if (choose < 0.9) {
+            else if (choose < 0.8) {
                 // Metal: bright, reflective surfaces with varying roughness.
                 material = std::make_shared<Metal>(
                     Color(
@@ -102,7 +104,7 @@ int main() {
     // Three large feature spheres
     auto material_center = std::make_shared<Dielectric>(1.5);
     auto material_left   = std::make_shared<Lambertian>(Color(0.4, 0.2, 0.1));
-    auto material_right  = std::make_shared<Metal>(Color(0.7, 0.6, 0.5), 0.0);
+    auto material_right  = std::make_shared<Metal>(Color(0.7, 0.7, 0.7), 0.0);
 
     world.add(std::make_shared<Sphere>(
         Point3(0.0, 1.0, 0.0), 1.0, material_center

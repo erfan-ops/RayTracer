@@ -4,6 +4,7 @@
 
 #include <cmath>
 #include <numbers>
+#include <random>
 
 
 class Vec3 {
@@ -87,9 +88,14 @@ inline Vec3 unit_vector(const Vec3 &v) {
     return v / v.length();
 }
 
+inline Vec3 random_in_unit_disk() {
+    while (true) {
+        auto p = Vec3(random_double(-1,1), random_double(-1,1), 0);
+        if (p.length_squared() < 1)
+            return p;
+    }
+}
 
-#include <cmath>
-#include <random>
 
 inline Vec3 random_unit_vector() {
     const auto theta = random_double(0.0, 2.0 * std::numbers::pi);
