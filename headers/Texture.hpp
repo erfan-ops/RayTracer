@@ -39,7 +39,7 @@ private:
 
 class GradientTexture : public Texture {
 public:
-    GradientTexture(const Color& color1, const Color& color2, Vec3 direction);
+    GradientTexture(const Color& color1, const Color& color2, Vec3 direction, double length);
 
     Color value(double u, double v, const Point3& p) const override;
 
@@ -47,15 +47,18 @@ private:
     Color m_color1;
     Color m_color2;
     Vec3 m_direction;
+    double m_length;
 };
 
 class MultiGradientTexture : public Texture {
 public:
-    MultiGradientTexture(const std::vector<Color>& colors, Vec3 direction);
+    MultiGradientTexture(const std::vector<Color>& colors, Vec3 direction, double length, int flag);
 
     Color value(double u, double v, const Point3& p) const override;
 
 private:
     std::vector<Color> m_colors;
     Vec3 m_direction;
+    double m_length;
+    int m_flag;
 };

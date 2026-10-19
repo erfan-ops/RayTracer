@@ -43,10 +43,12 @@ Color CheckerTexture::value(double u, double v, const Point3& p) const {
 GradientTexture::GradientTexture(
     const Color& color1,
     const Color& color2,
-    Vec3 direction
+    Vec3 direction,
+    double length
 ) : m_color1(color1)
   , m_color2(color2)
   , m_direction(direction)
+  , m_length(length)
 {
     m_direction.normalize();
 }
@@ -54,7 +56,7 @@ GradientTexture::GradientTexture(
 Color GradientTexture::value(double u, double v, const Point3& p) const {
     const double d = dot(p, m_direction);
     
-    double t = std::fmod(std::abs(d), 1.0);
+    double t = std::fmod(std::abs(d), m_length) / m_length;
 
     return (1.0 - t) * m_color1 + t * m_color2;
 }
@@ -62,15 +64,19 @@ Color GradientTexture::value(double u, double v, const Point3& p) const {
 
 MultiGradientTexture::MultiGradientTexture(
     const std::vector<Color>& colors,
-    Vec3 direction
+    Vec3 direction,
+    double length,
+    int flag
 ) : m_colors(colors)
   , m_direction(direction)
+  , m_length(length)
+  , m_flag(flag)
 {}
 
 Color MultiGradientTexture::value(double u, double v, const Point3& p) const {
     const double d = dot(p, m_direction);
 
-    double t = std::fmod(std::abs(d), 1.0);
+    double t = std::fmod(std::abs(d), m_length) / m_length;
 
     const double scaled = t * (m_colors.size() - 1);
     const int index = static_cast<int>(scaled);

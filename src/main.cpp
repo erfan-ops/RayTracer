@@ -141,7 +141,7 @@ void checkered_spheres() {
 
     HittableList world;
 
-    auto checker1 = std::make_shared<CheckerTexture>(0.32, Color(.2, .3, .1), Color(.9, .9, .9));
+    auto checker1 = std::make_shared<CheckerTexture>(0.62, Color(.2, .3, .1), Color(.9, .9, .9));
 
     std::vector<Color> colors;
     colors.reserve(4);
@@ -150,14 +150,18 @@ void checkered_spheres() {
     colors.emplace_back(0.0, 0.0, 1.0);
     colors.emplace_back(1.0, 1.0, 1.0);
 
-    auto gradient = std::make_shared<MultiGradientTexture>(colors, Vec3(1.0, 0.2, 0.5));
+    auto gradient = std::make_shared<MultiGradientTexture>(colors, Vec3(1.0, 0.2, 0.5), 4.0, 1);
 
-    world.add(std::make_shared<Sphere>(Point3(0,-10, 0), 10, std::make_shared<Lambertian>(checker1)));
-    world.add(std::make_shared<Sphere>(Point3(0, 10, 0), 10, std::make_shared<Lambertian>(gradient)));
+    double a = 10.0;
+    world.add(std::make_shared<Sphere>(Point3(0,-a, 0), a, std::make_shared<Lambertian>(checker1)));
+    world.add(std::make_shared<Sphere>(Point3(0, a, 0), a, std::make_shared<Lambertian>(checker1)));
+
+    world.add(std::make_shared<Sphere>(Point3(0.0, 0.0, std::sqrt(3.0) * a), a, std::make_shared<Lambertian>(gradient)));
+    world.add(std::make_shared<Sphere>(Point3(0.0, 0.0, -std::sqrt(3.0) * a), a, std::make_shared<Lambertian>(gradient)));
 
     Camera cam(
-        20.0,
-        Point3(13.0, 2.0, 3.0),
+        50.0,
+        Point3(38.0, 2.0, 3.0),
         Point3(0.0, 0.0, 0.0),
         Vec3(0.0, 1.0, 0.0),
         width,
