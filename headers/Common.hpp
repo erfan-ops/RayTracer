@@ -29,3 +29,7 @@ inline double random_double(double min, double max) {
     // Returns a random real in [min,max).
     return random_double() * (max - min) + min;
 }
+
+inline int random_int(int min, int max) {
+    return std::uniform_int_distribution<int>(min, max)(engine);
+}

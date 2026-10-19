@@ -8,6 +8,8 @@ public:
 
     Interval(double min, double max);
 
+    Interval(const Interval& a, const Interval& b);
+
     double size() const;
 
     bool contains(double x) const;
@@ -16,8 +18,13 @@ public:
 
     double clamp(double x) const;
 
+    Interval expand(double delta) const;
+
     double min() const;
     double max() const;
+
+    void set_min(double m);
+    void set_max(double m);
 
 public:
     static const Interval empty;

@@ -25,9 +25,9 @@ double hit_sphere(const Point3& center, double radius, const Ray& r) {
 
 Camera::Camera(
     const double verticalFOV,
-    const Point3 &lookfrom,
-    const Point3 &lookat,
-    const Vec3 &vup,
+    const Point3& lookfrom,
+    const Point3& lookat,
+    const Vec3& vup,
     const size_t imageWidth,
     const size_t imageHeight,
     const int samplesPerPixel,
@@ -82,7 +82,7 @@ const unsigned char* Camera::shot(HittableList world) const {
     threads.reserve(nThreads);
 
     for (int threadIdx = 0; threadIdx < nThreads; threadIdx++) {
-        threads.emplace_back([this, &world, threadIdx, nThreads]() {
+        threads.emplace_back([this,& world, threadIdx, nThreads]() {
             for (int j = threadIdx; j < m_imageHeight; j += nThreads) {
                 std::cout << '\r' << j << "                    ";
 
@@ -151,20 +151,21 @@ static Vec3 sample_square() {
 }
 
 Point3 Camera::defocus_disk_sample() const {
-    auto p = random_in_unit_disk();
+    Vec3 p = random_in_unit_disk();
     return m_center + (p[0] * m_defocusDiskU) + (p[1] * m_defocusDiskV);
 }
 
 Ray Camera::get_ray(int i, int j) const {
-    auto offset = sample_square();
-    auto pixel_sample = m_pixel00Loc
+    Vec3 offset = sample_square();
+    Vec3 pixel_sample = m_pixel00Loc
                         + ((i + offset.x()) * m_pixelDeltaU)
                         + ((j + offset.y()) * m_pixelDeltaV);
 
-    auto ray_origin = (m_defocusAngle <= 0) ? m_center : defocus_disk_sample();
-    auto ray_direction = pixel_sample - ray_origin;
+    Vec3 ray_origin = (m_defocusAngle <= 0) ? m_center : defocus_disk_sample();
+    Vec3 ray_direction = pixel_sample - ray_origin;
+    double ray_time = random_double();
 
-    return Ray(ray_origin, ray_direction);
+    return Ray(ray_origin, ray_direction, ray_time);
 }
 
 

@@ -8,9 +8,9 @@ class Camera {
 public:
     Camera(
         const double verticalFOV,
-        const Point3 &lookfrom,
-        const Point3 &lookat,
-        const Vec3 &vup,
+        const Point3& lookfrom,
+        const Point3& lookat,
+        const Vec3& vup,
         const size_t imageWidth,
         const size_t imageHeight,
         const int samplesPerPixel,

@@ -184,6 +184,8 @@ endfunction()
 # ============================================================
 
 set(APP_SOURCES
+    src/AABB.cpp
+    src/BVH.cpp
     src/Camera.cpp
     src/HittableList.cpp
     src/Image.cpp
@@ -197,6 +199,8 @@ set(APP_SOURCES
 )
 
 set(HEADERS
+    headers/AABB.hpp
+    headers/BVH.hpp
     headers/Camera.hpp
     headers/Common.hpp
     headers/Hittable.hpp

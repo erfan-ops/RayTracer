@@ -5,13 +5,14 @@
 #include <Ray.hpp>
 #include <Camera.hpp>
 #include <Sphere.hpp>
+#include <BVH.hpp>
 
 
 int main() {
     Image image{};
 
-    const size_t width = 1920ull;
-    const size_t height = 1080ull;
+    const size_t width = 640ull;
+    const size_t height = 360ull;
 
     // Create camera
     Camera cam(
@@ -21,8 +22,8 @@ int main() {
         Vec3(0.0, 1.0, 0.0),
         width,
         height,
-        200,
-        40,
+        500,
+        50,
         0.6,
         10.0
     );
@@ -48,7 +49,7 @@ int main() {
     static std::uniform_real_distribution<double> materialChoice(0.0, 1.0);
 
     // Generate a grid of spheres
-    constexpr int gridSize = 8;
+    constexpr int gridSize = 11;
 
     for (int a = -gridSize; a < gridSize; ++a) {
         for (int b = -gridSize; b < gridSize; ++b) {
@@ -97,7 +98,9 @@ int main() {
                 material = std::make_shared<Dielectric>(1.5);
             }
 
-            world.add(std::make_shared<Sphere>(center, r, material));
+            auto center2 = center + Vec3(0.0, r*0.5, 0.0);
+
+            world.add(std::make_shared<Sphere>(center, center2, r, material));
         }
     }
 
@@ -117,6 +120,8 @@ int main() {
     world.add(std::make_shared<Sphere>(
         Point3(4.0, 1.0, 0.0), 1.0, material_right
     ));
+
+    world = HittableList(std::make_shared<BVHNode>(world));
 
     // Render the image
     const unsigned char* data = cam.shot(world);
