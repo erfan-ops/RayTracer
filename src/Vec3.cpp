@@ -13,6 +13,13 @@ double Vec3::r() const { return e[0]; }
 double Vec3::g() const { return e[1]; }
 double Vec3::b() const { return e[2]; }
 
+void Vec3::normalize() {
+    double length = std::sqrt(e[0]*e[0] + e[1]*e[1] + e[2]*e[2]);
+    e[0] /= length;
+    e[1] /= length;
+    e[2] /= length;
+}
+
 Vec3 Vec3::operator-() const { return Vec3(-e[0], -e[1], -e[2]); }
 double Vec3::operator[](int i) const { return e[i]; }
 double& Vec3::operator[](int i) { return e[i]; }

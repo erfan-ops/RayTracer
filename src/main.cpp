@@ -6,13 +6,14 @@
 #include <Camera.hpp>
 #include <Sphere.hpp>
 #include <BVH.hpp>
+#include <Texture.hpp>
 
 
-int main() {
+void bouncing_spheres() {
     Image image{};
 
-    const size_t width = 640ull;
-    const size_t height = 360ull;
+    const size_t width = 400ull;
+    const size_t height = 225ull;
 
     // Create camera
     Camera cam(
@@ -22,7 +23,7 @@ int main() {
         Vec3(0.0, 1.0, 0.0),
         width,
         height,
-        500,
+        300,
         50,
         0.6,
         10.0
@@ -32,12 +33,8 @@ int main() {
     HittableList world;
 
     // Ground
-    auto material_ground = std::make_shared<Lambertian>(Color(0.5, 0.5, 0.5));
-    world.add(std::make_shared<Sphere>(
-        Point3(0.0, -1000.0, 0.0),
-        1000.0,
-        material_ground
-    ));
+    auto checker = std::make_shared<CheckerTexture>(0.32, Color(.2, .3, .1), Color(.9, .9, .9));
+    world.add(std::make_shared<Sphere>(Point3(0,-1000,0), 1000, std::make_shared<Lambertian>(checker)));
 
     // Random number generation
     static std::random_device rd;
@@ -132,6 +129,61 @@ int main() {
     }
     else {
         std::cerr << "Format was unavailable" << std::endl;
+    }
+}
+
+
+void checkered_spheres() {
+    Image image{};
+
+    const size_t width = 400ull;
+    const size_t height = 225ull;
+
+    HittableList world;
+
+    auto checker1 = std::make_shared<CheckerTexture>(0.32, Color(.2, .3, .1), Color(.9, .9, .9));
+
+    std::vector<Color> colors;
+    colors.reserve(4);
+    colors.emplace_back(0.0, 0.0, 0.0);
+    colors.emplace_back(1.0, 0.0, 0.0);
+    colors.emplace_back(0.0, 0.0, 1.0);
+    colors.emplace_back(1.0, 1.0, 1.0);
+
+    auto gradient = std::make_shared<MultiGradientTexture>(colors, Vec3(1.0, 0.2, 0.5));
+
+    world.add(std::make_shared<Sphere>(Point3(0,-10, 0), 10, std::make_shared<Lambertian>(checker1)));
+    world.add(std::make_shared<Sphere>(Point3(0, 10, 0), 10, std::make_shared<Lambertian>(gradient)));
+
+    Camera cam(
+        20.0,
+        Point3(13.0, 2.0, 3.0),
+        Point3(0.0, 0.0, 0.0),
+        Vec3(0.0, 1.0, 0.0),
+        width,
+        height,
+        300,
+        50,
+        0.0,
+        10.0
+    );
+
+    const unsigned char* data = cam.shot(world);
+
+    // Save the image
+    if (Image::isFormatAvailable(Image::Format::PNG)) {
+        image.savePNG(data, cam.width(), cam.height(), "out/output.png", Image::PixelFormat::RGB24);
+    }
+    else {
+        std::cerr << "Format was unavailable" << std::endl;
+    }
+}
+
+
+int main() {
+    switch (2) {
+        case 1: bouncing_spheres();  break;
+        case 2: checkered_spheres(); break;
     }
 
     return 0;

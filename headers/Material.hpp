@@ -2,6 +2,8 @@
 
 #include <Vec3.hpp>
 #include <Hittable.hpp>
+#include <Texture.hpp>
+
 
 class Material {
 public:
@@ -19,6 +21,7 @@ public:
 class Lambertian : public Material {
 public:
     Lambertian(const Color& albedo);
+    Lambertian(std::shared_ptr<Texture> tex);
 
     bool scatter(
         const Ray& r_in,
@@ -28,7 +31,7 @@ public:
     ) const override;
 
 private:
-    Color m_albedo;
+    std::shared_ptr<Texture> m_tex;
 };
 
 

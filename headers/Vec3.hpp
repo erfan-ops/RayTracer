@@ -20,6 +20,8 @@ public:
     double g() const;
     double b() const;
 
+    void normalize();
+
     Vec3 operator-() const;
     double operator[](int i) const;
     double& operator[](int i);

@@ -195,6 +195,7 @@ set(APP_SOURCES
     src/Ray.cpp
     src/Renderer.cpp
     src/Sphere.cpp
+    src/Texture.cpp
     src/Vec3.cpp
 )
 
@@ -211,6 +212,7 @@ set(HEADERS
     headers/Ray.hpp
     headers/Renderer.hpp
     headers/Sphere.hpp
+    headers/Texture.hpp
     headers/Vec3.hpp
 )
 
