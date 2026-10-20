@@ -188,15 +188,20 @@ set(APP_SOURCES
     src/BVH.cpp
     src/Camera.cpp
     src/HittableList.cpp
-    src/Image.cpp
+    src/ImageRead.cpp
+    src/ImageWrite.cpp
     src/Interval.cpp
     src/main.cpp
     src/Material.cpp
     src/Ray.cpp
     src/Renderer.cpp
     src/Sphere.cpp
-    src/Texture.cpp
     src/Vec3.cpp
+    src/textures/Checker.cpp
+    src/textures/Gradient.cpp
+    src/textures/Image.cpp
+    src/textures/MultiGradient.cpp
+    src/textures/SolidColor.cpp
 )
 
 set(HEADERS
@@ -246,8 +251,19 @@ if(RAYTRACER_BUILD_TESTS)
 
     add_executable(RayTracerTests
         tests/ImageTests.cpp
-        src/Image.cpp
+        src/ImageRead.cpp
+        src/ImageWrite.cpp
+        src/Interval.cpp
+        src/Vec3.cpp
         headers/Image.hpp
+        headers/Interval.hpp
+        headers/Texture.hpp
+        headers/Vec3.hpp
+        src/textures/Checker.cpp
+        src/textures/Gradient.cpp
+        src/textures/Image.cpp
+        src/textures/MultiGradient.cpp
+        src/textures/SolidColor.cpp
     )
 
     target_include_directories(RayTracerTests PRIVATE

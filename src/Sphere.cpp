@@ -53,10 +53,19 @@ bool Sphere::hit(const Ray& r, Interval ray_t, HitRecord& rec) const {
 
     Vec3 outward_normal = (rec.p - current_center) / m_radius;
     rec.set_face_normal(r, outward_normal);
+    get_sphere_uv(outward_normal, rec.u, rec.v);
     rec.mat = m_mat;
 
     return true;
 }
 
 AABB Sphere::bounding_box() const { return m_bbox; }
+
+void Sphere::get_sphere_uv(const Point3& p, double& u, double& v) {
+    auto theta = std::acos(-p.y());
+    auto phi = std::atan2(-p.z(), p.x()) + std::numbers::pi;
+
+    u = phi / (2*std::numbers::pi);
+    v = theta / std::numbers::pi;
+}
 

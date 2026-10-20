@@ -126,47 +126,47 @@ constexpr int kEncoderDefault = -1;
 // Format mapping
 // ============================================================
 
-[[nodiscard]] constexpr int bytesPerPixelFor(const Image::PixelFormat format) noexcept {
+[[nodiscard]] constexpr int bytesPerPixelFor(const ImageWrite::PixelFormat format) noexcept {
     switch (format) {
-        case Image::PixelFormat::RGB24: return 3;
-        case Image::PixelFormat::RGBA32: return 4;
-        case Image::PixelFormat::GRAY8: return 1;
+        case ImageWrite::PixelFormat::RGB24: return 3;
+        case ImageWrite::PixelFormat::RGBA32: return 4;
+        case ImageWrite::PixelFormat::GRAY8: return 1;
     }
     return 0;
 }
 
 /// Pixel format of the caller's buffer, which always lives in one plane
 /// because every supported input layout is interleaved.
-[[nodiscard]] constexpr AVPixelFormat sourcePixelFormatFor(const Image::PixelFormat format) noexcept {
+[[nodiscard]] constexpr AVPixelFormat sourcePixelFormatFor(const ImageWrite::PixelFormat format) noexcept {
     switch (format) {
-        case Image::PixelFormat::RGB24: return AV_PIX_FMT_RGB24;
-        case Image::PixelFormat::RGBA32: return AV_PIX_FMT_RGBA;
-        case Image::PixelFormat::GRAY8: return AV_PIX_FMT_GRAY8;
+        case ImageWrite::PixelFormat::RGB24: return AV_PIX_FMT_RGB24;
+        case ImageWrite::PixelFormat::RGBA32: return AV_PIX_FMT_RGBA;
+        case ImageWrite::PixelFormat::GRAY8: return AV_PIX_FMT_GRAY8;
     }
     return AV_PIX_FMT_NONE;
 }
 
-[[nodiscard]] const char* codecNameFor(const Image::Format format) noexcept {
+[[nodiscard]] const char* codecNameFor(const ImageWrite::Format format) noexcept {
     switch (format) {
         // WebP has no native encoder in FFmpeg; it is provided by libwebp,
         // which this build was compiled with.
-        case Image::Format::WebP: return "libwebp";
-        case Image::Format::PNG: return "png";
-        case Image::Format::JPEG: return "mjpeg";
-        case Image::Format::BMP: return "bmp";
+        case ImageWrite::Format::WebP: return "libwebp";
+        case ImageWrite::Format::PNG: return "png";
+        case ImageWrite::Format::JPEG: return "mjpeg";
+        case ImageWrite::Format::BMP: return "bmp";
     }
     return nullptr;
 }
 
 /// Muxer used to write the file. It is named explicitly so that the output
 /// format is never inferred from the file extension.
-[[nodiscard]] constexpr const char* muxerNameFor(const Image::Format format) noexcept {
+[[nodiscard]] constexpr const char* muxerNameFor(const ImageWrite::Format format) noexcept {
     switch (format) {
-        case Image::Format::PNG:
-        case Image::Format::JPEG:
-        case Image::Format::BMP:
+        case ImageWrite::Format::PNG:
+        case ImageWrite::Format::JPEG:
+        case ImageWrite::Format::BMP:
             return "image2";
-        case Image::Format::WebP:
+        case ImageWrite::Format::WebP:
             return "webp";
     }
     return nullptr;
@@ -174,30 +174,30 @@ constexpr int kEncoderDefault = -1;
 
 /// Pixel format the encoder is fed, which is rarely the format the caller
 /// supplied: none of these encoders accept RGB24 except PNG.
-[[nodiscard]] constexpr AVPixelFormat targetPixelFormatFor(const Image::Format format,
-                                                           const Image::PixelFormat source) noexcept {
+[[nodiscard]] constexpr AVPixelFormat targetPixelFormatFor(const ImageWrite::Format format,
+                                                           const ImageWrite::PixelFormat source) noexcept {
     switch (format) {
-        case Image::Format::PNG:
+        case ImageWrite::Format::PNG:
             // PNG stores the caller's channels as-is.
             switch (source) {
-                case Image::PixelFormat::RGB24: return AV_PIX_FMT_RGB24;
-                case Image::PixelFormat::RGBA32: return AV_PIX_FMT_RGBA;
-                case Image::PixelFormat::GRAY8: return AV_PIX_FMT_GRAY8;
+                case ImageWrite::PixelFormat::RGB24: return AV_PIX_FMT_RGB24;
+                case ImageWrite::PixelFormat::RGBA32: return AV_PIX_FMT_RGBA;
+                case ImageWrite::PixelFormat::GRAY8: return AV_PIX_FMT_GRAY8;
             }
             break;
-        case Image::Format::JPEG:
+        case ImageWrite::Format::JPEG:
             // The MJPEG encoder accepts only planar YCbCr; 4:2:0 keeps files
             // small and matches the usual JPEG convention.
             return AV_PIX_FMT_YUV420P;
-        case Image::Format::BMP:
+        case ImageWrite::Format::BMP:
             // The BMP encoder has no RGB24 entry: it wants blue first.
             switch (source) {
-                case Image::PixelFormat::RGB24: return AV_PIX_FMT_BGR24;
-                case Image::PixelFormat::RGBA32: return AV_PIX_FMT_BGRA;
-                case Image::PixelFormat::GRAY8: return AV_PIX_FMT_GRAY8;
+                case ImageWrite::PixelFormat::RGB24: return AV_PIX_FMT_BGR24;
+                case ImageWrite::PixelFormat::RGBA32: return AV_PIX_FMT_BGRA;
+                case ImageWrite::PixelFormat::GRAY8: return AV_PIX_FMT_GRAY8;
             }
             break;
-        case Image::Format::WebP:
+        case ImageWrite::Format::WebP:
             // libwebp converts BGRA to its internal YUV itself, which is
             // measurably more accurate than converting to YUV here and
             // guessing the range convention it expects. Lossless WebP
@@ -211,8 +211,8 @@ constexpr int kEncoderDefault = -1;
 /// deprecates the yuvj* pixel formats in favour of a plain yuv format plus an
 /// explicit range, so the range is carried separately and applied to the
 /// scaler as well.
-[[nodiscard]] constexpr bool needsFullRangeOutput(const Image::Format format) noexcept {
-    return format == Image::Format::JPEG;
+[[nodiscard]] constexpr bool needsFullRangeOutput(const ImageWrite::Format format) noexcept {
+    return format == ImageWrite::Format::JPEG;
 }
 
 /// Maps a conventional "higher is better" JPEG quality (1..100) onto the
@@ -283,8 +283,8 @@ private:
 /// Everything that varies between savePNG()/saveJPEG()/saveBMP()/saveWebP().
 /// The FFmpeg specifics stay out of the public header by living here.
 struct SaveRequest {
-    Image::Format format;
-    Image::PixelFormat sourceFormat;
+    ImageWrite::Format format;
+    ImageWrite::PixelFormat sourceFormat;
     const unsigned char* data;
     int width;
     int height;
@@ -341,14 +341,14 @@ void saveImage(const SaveRequest& request, const std::filesystem::path& outputPa
         throw std::invalid_argument(message.str());
     }
 
-    if (request.format == Image::Format::PNG && request.compressionLevel != kEncoderDefault &&
+    if (request.format == ImageWrite::Format::PNG && request.compressionLevel != kEncoderDefault &&
         (request.compressionLevel < 0 || request.compressionLevel > 9)) {
         std::ostringstream message;
         message << "Cannot save '" << pathText << "': compressionLevel must be between 0 and 9, got "
                 << request.compressionLevel;
         throw std::invalid_argument(message.str());
     }
-    if ((request.format == Image::Format::JPEG || request.format == Image::Format::WebP) &&
+    if ((request.format == ImageWrite::Format::JPEG || request.format == ImageWrite::Format::WebP) &&
         request.quality != kEncoderDefault && (request.quality < 1 || request.quality > 100)) {
         std::ostringstream message;
         message << "Cannot save '" << pathText << "': quality must be between 1 and 100, got "
@@ -362,7 +362,7 @@ void saveImage(const SaveRequest& request, const std::filesystem::path& outputPa
     if (codec == nullptr) {
         throw std::runtime_error("Cannot save '" + pathText + "': this FFmpeg build has no '" +
                                  (codecName != nullptr ? codecName : "<unknown>") +
-                                 "' encoder; use Image::isFormatAvailable() to test for one");
+                                 "' encoder; use ImageWrite::isFormatAvailable() to test for one");
     }
 
     const AVPixelFormat sourceFormat = sourcePixelFormatFor(request.sourceFormat);
@@ -384,12 +384,12 @@ void saveImage(const SaveRequest& request, const std::filesystem::path& outputPa
     if (request.compressionLevel != kEncoderDefault) {
         codecContext->compression_level = request.compressionLevel;
     }
-    if (request.format == Image::Format::JPEG && request.quality != kEncoderDefault) {
+    if (request.format == ImageWrite::Format::JPEG && request.quality != kEncoderDefault) {
         const int quantiser = jpegQuantiserFor(request.quality);
         codecContext->qmin = quantiser;
         codecContext->qmax = quantiser;
     }
-    if (request.format == Image::Format::WebP) {
+    if (request.format == ImageWrite::Format::WebP) {
         if (request.lossless) {
             const int ret = av_opt_set_int(codecContext->priv_data, "lossless", 1, 0);
             if (ret < 0) {
@@ -588,15 +588,15 @@ void saveImage(const SaveRequest& request, const std::filesystem::path& outputPa
 }  // namespace
 
 // ============================================================
-// Image
+// ImageWrite
 // ============================================================
 
-bool Image::isFormatAvailable(const Format format) noexcept {
+bool ImageWrite::isFormatAvailable(const Format format) noexcept {
     const char* const codecName = codecNameFor(format);
     return codecName != nullptr && avcodec_find_encoder_by_name(codecName) != nullptr;
 }
 
-void Image::savePNG(const unsigned char* data, const int width, const int height,
+void ImageWrite::savePNG(const unsigned char* data, const int width, const int height,
                     const std::filesystem::path& outputPath, const PixelFormat format,
                     const int rowStrideBytes, const int compressionLevel) const {
     saveImage({.format = Format::PNG,
@@ -611,7 +611,7 @@ void Image::savePNG(const unsigned char* data, const int width, const int height
               outputPath);
 }
 
-void Image::saveJPEG(const unsigned char* data, const int width, const int height,
+void ImageWrite::saveJPEG(const unsigned char* data, const int width, const int height,
                      const std::filesystem::path& outputPath, const PixelFormat format,
                      const int rowStrideBytes, const int quality) const {
     saveImage({.format = Format::JPEG,
@@ -626,7 +626,7 @@ void Image::saveJPEG(const unsigned char* data, const int width, const int heigh
               outputPath);
 }
 
-void Image::saveBMP(const unsigned char* data, const int width, const int height,
+void ImageWrite::saveBMP(const unsigned char* data, const int width, const int height,
                     const std::filesystem::path& outputPath, const PixelFormat format,
                     const int rowStrideBytes) const {
     saveImage({.format = Format::BMP,
@@ -641,7 +641,7 @@ void Image::saveBMP(const unsigned char* data, const int width, const int height
               outputPath);
 }
 
-void Image::saveWebP(const unsigned char* data, const int width, const int height,
+void ImageWrite::saveWebP(const unsigned char* data, const int width, const int height,
                      const std::filesystem::path& outputPath, const PixelFormat format,
                      const int rowStrideBytes, const int quality, const bool lossless) const {
     saveImage({.format = Format::WebP,

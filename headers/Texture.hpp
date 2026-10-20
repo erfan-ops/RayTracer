@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Vec3.hpp>
+#include <Image.hpp>
 
 #include <vector>
 
@@ -61,4 +62,14 @@ private:
     Vec3 m_direction;
     double m_length;
     int m_flag;
+};
+
+class ImageTexture : public Texture {
+public:
+    ImageTexture(const std::string& imagePath);
+
+    Color value(double u, double v, const Point3& p) const override;
+
+private:
+    ImageRead img;
 };

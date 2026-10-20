@@ -25,6 +25,9 @@ public:
     AABB bounding_box() const override;
 
 private:
+    static void get_sphere_uv(const Point3& p, double& u, double& v);
+
+private:
     Ray m_center;
     double m_radius;
     std::shared_ptr<Material> m_mat;

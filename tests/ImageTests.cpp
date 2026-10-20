@@ -1,12 +1,14 @@
-// Tests for the Image encoder.
+// Tests for the ImageWrite encoder and the ImageRead decoder.
 //
 // Every written file is fed back through libavcodec/libavformat and compared
-// against the source pixels, so "the file exists" is never taken as proof that
-// encoding worked.
+// against the source pixels, and ImageRead has to reproduce those same pixels
+// as linear light, so "the file exists" is never taken as proof that encoding
+// worked.
 //
 // Registered with CTest as RayTracer.Image; run it directly for the same result.
 
 #include <Image.hpp>
+#include <Texture.hpp>
 
 #include <algorithm>
 #include <cmath>
@@ -119,6 +121,20 @@ std::string toUtf8(const std::filesystem::path& path) {
     return std::string(reinterpret_cast<const char*>(utf8.data()), utf8.size());
 }
 
+/// libavcodec still emits the deprecated yuvj* formats for JPEG. They are the
+/// plain yuv* formats with full-range chroma implied, so map them and carry
+/// the range explicitly -- the same normalisation ImageRead performs.
+void normaliseDecodedFormat(AVPixelFormat& format, AVColorRange& range) noexcept {
+    switch (format) {
+        case AV_PIX_FMT_YUVJ420P: format = AV_PIX_FMT_YUV420P; range = AVCOL_RANGE_JPEG; break;
+        case AV_PIX_FMT_YUVJ422P: format = AV_PIX_FMT_YUV422P; range = AVCOL_RANGE_JPEG; break;
+        case AV_PIX_FMT_YUVJ444P: format = AV_PIX_FMT_YUV444P; range = AVCOL_RANGE_JPEG; break;
+        case AV_PIX_FMT_YUVJ440P: format = AV_PIX_FMT_YUV440P; range = AVCOL_RANGE_JPEG; break;
+        case AV_PIX_FMT_YUVJ411P: format = AV_PIX_FMT_YUV411P; range = AVCOL_RANGE_JPEG; break;
+        default: break;
+    }
+}
+
 /// Decodes the first video frame of @p path into @p targetFormat (RGB24 or
 /// RGBA). Returns false and fills @p error on failure.
 bool decodeImage(const std::filesystem::path& path, const AVPixelFormat targetFormat,
@@ -193,7 +209,11 @@ bool decodeImage(const std::filesystem::path& path, const AVPixelFormat targetFo
 
     decoded.width = frame->width;
     decoded.height = frame->height;
-    decoded.sourceFormat = static_cast<AVPixelFormat>(frame->format);
+
+    AVPixelFormat sourceFormat = static_cast<AVPixelFormat>(frame->format);
+    AVColorRange sourceRange = frame->color_range;
+    normaliseDecodedFormat(sourceFormat, sourceRange);
+    decoded.sourceFormat = sourceFormat;
 
     const AVPixelFormat destination =
         targetFormat == AV_PIX_FMT_RGBA ? AV_PIX_FMT_RGBA : AV_PIX_FMT_RGB24;
@@ -202,7 +222,7 @@ bool decodeImage(const std::filesystem::path& path, const AVPixelFormat targetFo
     decoded.pixels.assign(static_cast<std::size_t>(destinationStride) * decoded.height, 0);
 
     std::unique_ptr<SwsContext, SwsCloser> scaler(
-        sws_getContext(decoded.width, decoded.height, static_cast<AVPixelFormat>(frame->format),
+        sws_getContext(decoded.width, decoded.height, sourceFormat,
                        decoded.width, decoded.height, destination, SWS_POINT, nullptr, nullptr, nullptr));
     if (!scaler) {
         error = "sws_getContext failed";
@@ -210,7 +230,7 @@ bool decodeImage(const std::filesystem::path& path, const AVPixelFormat targetFo
     }
     // Reproduce the full-range convention the file was encoded with, so the
     // round trip is comparable with the original pixels.
-    if (frame->color_range == AVCOL_RANGE_JPEG) {
+    if (sourceRange == AVCOL_RANGE_JPEG) {
         const int* const coefficients = sws_getCoefficients(SWS_CS_DEFAULT);
         constexpr int kFullRange = 1;
         sws_setColorspaceDetails(scaler.get(), coefficients, kFullRange, coefficients, kFullRange, 0,
@@ -358,6 +378,77 @@ std::vector<unsigned char> makeGrayPattern(const int width, const int height) {
     return image;
 }
 
+// ------------------------------------------------------------
+// ImageRead test helpers
+// ------------------------------------------------------------
+
+/// True when @p operation throws @p Exception (or a type derived from it).
+template <typename Exception, typename Operation>
+bool throwsAs(Operation&& operation) {
+    try {
+        operation();
+    } catch (const Exception&) {
+        return true;
+    } catch (...) {
+        return false;
+    }
+    return false;
+}
+
+/// sRGB electro-optical transfer function, the conversion ImageRead applies to
+/// each decoded 8-bit sample.
+double linearFromSrgb(const unsigned char value) {
+    constexpr double kChannelMaximum = 255.0;
+    const double encoded = static_cast<double>(value) / kChannelMaximum;
+    return encoded <= 0.04045 ? encoded / 12.92
+                              : std::pow((encoded + 0.055) / 1.055, 2.4);
+}
+
+/// Compares a decoded color against the linear-light value of an 8-bit sRGB
+/// source sample. The tolerance is far below one 8-bit step, so this still
+/// proves the decoded byte is exact.
+bool colorEquals(const Color& color, const unsigned char red, const unsigned char green,
+                 const unsigned char blue) {
+    constexpr double kTolerance = 1.0e-12;
+    return std::abs(color.r() - linearFromSrgb(red)) <= kTolerance &&
+           std::abs(color.g() - linearFromSrgb(green)) <= kTolerance &&
+           std::abs(color.b() - linearFromSrgb(blue)) <= kTolerance;
+}
+
+/// A small image whose channel values all differ, so a swapped channel or a
+/// one-pixel shift cannot go unnoticed.
+constexpr int kKnownWidth = 5;
+constexpr int kKnownHeight = 4;
+
+std::vector<unsigned char> makeKnownPattern(const int width, const int height) {
+    std::vector<unsigned char> image(static_cast<std::size_t>(width) * height * 3);
+    for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
+            const std::size_t index = (static_cast<std::size_t>(y) * width + x) * 3;
+            image[index + 0] = static_cast<unsigned char>((x * 37 + y * 11 + 3) % 256);
+            image[index + 1] = static_cast<unsigned char>((x * 11 + y * 37 + 97) % 256);
+            image[index + 2] = static_cast<unsigned char>((x * 53 + y * 7 + 151) % 256);
+        }
+    }
+    return image;
+}
+
+/// Writes @p text verbatim, for tests that need a file which is not an image.
+void writeRawFile(const std::filesystem::path& path, const std::string& text) {
+    std::ofstream stream(path, std::ios::binary);
+    stream.write(text.data(), static_cast<std::streamsize>(text.size()));
+}
+
+/// Copies the first @p byteCount bytes of @p source to @p destination, which
+/// turns a valid file into a truncated (corrupted) one.
+void writeTruncatedFile(const std::filesystem::path& source,
+                        const std::filesystem::path& destination, const std::size_t byteCount) {
+    const std::string bytes = readAll(source);
+    std::ofstream stream(destination, std::ios::binary);
+    stream.write(bytes.data(),
+                 static_cast<std::streamsize>(std::min(byteCount, bytes.size())));
+}
+
 }  // namespace
 
 int main() {
@@ -371,16 +462,16 @@ int main() {
         return 1;
     }
 
-    const Image image;
+    const ImageWrite image;
     const std::vector<unsigned char> rgb = makeRgbPattern(kWidth, kHeight);
 
     // --------------------------------------------------------
     section("Encoder availability");
     // --------------------------------------------------------
-    const bool pngAvailable = Image::isFormatAvailable(Image::Format::PNG);
-    const bool jpegAvailable = Image::isFormatAvailable(Image::Format::JPEG);
-    const bool bmpAvailable = Image::isFormatAvailable(Image::Format::BMP);
-    const bool webpAvailable = Image::isFormatAvailable(Image::Format::WebP);
+    const bool pngAvailable = ImageWrite::isFormatAvailable(ImageWrite::Format::PNG);
+    const bool jpegAvailable = ImageWrite::isFormatAvailable(ImageWrite::Format::JPEG);
+    const bool bmpAvailable = ImageWrite::isFormatAvailable(ImageWrite::Format::BMP);
+    const bool webpAvailable = ImageWrite::isFormatAvailable(ImageWrite::Format::WebP);
     std::cout << "  PNG=" << pngAvailable << " JPEG=" << jpegAvailable << " BMP=" << bmpAvailable
               << " WebP=" << webpAvailable << '\n';
     CHECK_MESSAGE(pngAvailable, "this FFmpeg build must provide the PNG encoder");
@@ -409,7 +500,7 @@ int main() {
     {
         const std::vector<unsigned char> rgba = makeRgbaPattern(kWidth, kHeight);
         const std::filesystem::path path = outputDir / "rgba.png";
-        image.savePNG(rgba.data(), kWidth, kHeight, path, Image::PixelFormat::RGBA32);
+        image.savePNG(rgba.data(), kWidth, kHeight, path, ImageWrite::PixelFormat::RGBA32);
         DecodedImage decoded;
         std::string decodeError;
         CHECK_MESSAGE(decodeImage(path, AV_PIX_FMT_RGBA, decoded, decodeError),
@@ -425,7 +516,7 @@ int main() {
     {
         const std::vector<unsigned char> gray = makeGrayPattern(kWidth, kHeight);
         const std::filesystem::path path = outputDir / "gray.png";
-        image.savePNG(gray.data(), kWidth, kHeight, path, Image::PixelFormat::GRAY8);
+        image.savePNG(gray.data(), kWidth, kHeight, path, ImageWrite::PixelFormat::GRAY8);
         DecodedImage decoded;
         std::string decodeError;
         CHECK_MESSAGE(decodeImage(path, AV_PIX_FMT_RGB24, decoded, decodeError),
@@ -447,8 +538,8 @@ int main() {
     {
         const std::filesystem::path stored = outputDir / "level0.png";
         const std::filesystem::path packed = outputDir / "level9.png";
-        image.savePNG(rgb.data(), kWidth, kHeight, stored, Image::PixelFormat::RGB24, 0, 0);
-        image.savePNG(rgb.data(), kWidth, kHeight, packed, Image::PixelFormat::RGB24, 0, 9);
+        image.savePNG(rgb.data(), kWidth, kHeight, stored, ImageWrite::PixelFormat::RGB24, 0, 0);
+        image.savePNG(rgb.data(), kWidth, kHeight, packed, ImageWrite::PixelFormat::RGB24, 0, 9);
         std::cout << "  level 0 = " << fileSize(stored) << " bytes, level 9 = " << fileSize(packed)
                   << " bytes\n";
         CHECK_MESSAGE(fileSize(stored) > fileSize(packed),
@@ -468,8 +559,8 @@ int main() {
     if (jpegAvailable) {
         const std::filesystem::path best = outputDir / "q95.jpg";
         const std::filesystem::path worst = outputDir / "q10.jpg";
-        image.saveJPEG(rgb.data(), kWidth, kHeight, best, Image::PixelFormat::RGB24, 0, 95);
-        image.saveJPEG(rgb.data(), kWidth, kHeight, worst, Image::PixelFormat::RGB24, 0, 10);
+        image.saveJPEG(rgb.data(), kWidth, kHeight, best, ImageWrite::PixelFormat::RGB24, 0, 95);
+        image.saveJPEG(rgb.data(), kWidth, kHeight, worst, ImageWrite::PixelFormat::RGB24, 0, 10);
         std::cout << "  quality 95 = " << fileSize(best) << " bytes, quality 10 = "
                   << fileSize(worst) << " bytes\n";
         CHECK_MESSAGE(fileSize(best) > fileSize(worst),
@@ -509,7 +600,7 @@ int main() {
                 outputDir / ("q" + std::to_string(boundary) + ".jpg");
             bool wrote = true;
             try {
-                image.saveJPEG(rgb.data(), kWidth, kHeight, path, Image::PixelFormat::RGB24, 0,
+                image.saveJPEG(rgb.data(), kWidth, kHeight, path, ImageWrite::PixelFormat::RGB24, 0,
                                boundary);
             } catch (const std::exception& exception) {
                 wrote = false;
@@ -550,14 +641,14 @@ int main() {
         bool lossyWrote = true;
         bool losslessWrote = true;
         try {
-            image.saveWebP(rgb.data(), kWidth, kHeight, lossy, Image::PixelFormat::RGB24, 0, 90,
+            image.saveWebP(rgb.data(), kWidth, kHeight, lossy, ImageWrite::PixelFormat::RGB24, 0, 90,
                            false);
         } catch (const std::exception& exception) {
             lossyWrote = false;
             std::cout << "  lossy WebP unavailable: " << exception.what() << '\n';
         }
         try {
-            image.saveWebP(rgb.data(), kWidth, kHeight, lossless, Image::PixelFormat::RGB24, 0, 90,
+            image.saveWebP(rgb.data(), kWidth, kHeight, lossless, ImageWrite::PixelFormat::RGB24, 0, 90,
                            true);
         } catch (const std::exception& exception) {
             losslessWrote = false;
@@ -589,7 +680,7 @@ int main() {
             // The header promises alpha survives lossless WebP; check it.
             const std::vector<unsigned char> rgba = makeRgbaPattern(kWidth, kHeight);
             const std::filesystem::path alphaPath = outputDir / "alpha.webp";
-            image.saveWebP(rgba.data(), kWidth, kHeight, alphaPath, Image::PixelFormat::RGBA32, 0, 90,
+            image.saveWebP(rgba.data(), kWidth, kHeight, alphaPath, ImageWrite::PixelFormat::RGBA32, 0, 90,
                            true);
             DecodedImage alphaDecoded;
             CHECK_MESSAGE(decodeImage(alphaPath, AV_PIX_FMT_RGBA, alphaDecoded, decodeError),
@@ -614,7 +705,7 @@ int main() {
         }
 
         const std::filesystem::path path = outputDir / "strided.png";
-        image.savePNG(padded.data(), kWidth, kHeight, path, Image::PixelFormat::RGB24, stride);
+        image.savePNG(padded.data(), kWidth, kHeight, path, ImageWrite::PixelFormat::RGB24, stride);
         DecodedImage decoded;
         std::string decodeError;
         CHECK_MESSAGE(decodeImage(path, AV_PIX_FMT_RGB24, decoded, decodeError),
@@ -727,22 +818,22 @@ int main() {
         expectInvalid("zero height", [&] { image.savePNG(rgb.data(), kWidth, 0, path); });
         expectInvalid("negative height", [&] { image.saveJPEG(rgb.data(), kWidth, -3, path); });
         expectInvalid("stride smaller than a packed row", [&] {
-            image.savePNG(rgb.data(), kWidth, kHeight, path, Image::PixelFormat::RGB24, kWidth * 3 - 1);
+            image.savePNG(rgb.data(), kWidth, kHeight, path, ImageWrite::PixelFormat::RGB24, kWidth * 3 - 1);
         });
         expectInvalid("negative stride", [&] {
-            image.savePNG(rgb.data(), kWidth, kHeight, path, Image::PixelFormat::RGB24, -(kWidth * 3));
+            image.savePNG(rgb.data(), kWidth, kHeight, path, ImageWrite::PixelFormat::RGB24, -(kWidth * 3));
         });
         expectInvalid("compression level above 9", [&] {
-            image.savePNG(rgb.data(), kWidth, kHeight, path, Image::PixelFormat::RGB24, 0, 10);
+            image.savePNG(rgb.data(), kWidth, kHeight, path, ImageWrite::PixelFormat::RGB24, 0, 10);
         });
         expectInvalid("compression level below -1", [&] {
-            image.savePNG(rgb.data(), kWidth, kHeight, path, Image::PixelFormat::RGB24, 0, -2);
+            image.savePNG(rgb.data(), kWidth, kHeight, path, ImageWrite::PixelFormat::RGB24, 0, -2);
         });
         expectInvalid("quality above 100", [&] {
-            image.saveJPEG(rgb.data(), kWidth, kHeight, path, Image::PixelFormat::RGB24, 0, 101);
+            image.saveJPEG(rgb.data(), kWidth, kHeight, path, ImageWrite::PixelFormat::RGB24, 0, 101);
         });
         expectInvalid("quality of zero", [&] {
-            image.saveJPEG(rgb.data(), kWidth, kHeight, path, Image::PixelFormat::RGB24, 0, 0);
+            image.saveJPEG(rgb.data(), kWidth, kHeight, path, ImageWrite::PixelFormat::RGB24, 0, 0);
         });
         expectInvalid("dimensions huge enough to overflow a size calculation", [&] {
             image.savePNG(rgb.data(), 1 << 30, 1 << 30, path);
@@ -864,16 +955,380 @@ int main() {
     section("Copyable and movable");
     // --------------------------------------------------------
     {
-        static_assert(std::is_copy_constructible_v<Image>);
-        static_assert(std::is_copy_assignable_v<Image>);
-        static_assert(std::is_move_constructible_v<Image>);
-        static_assert(std::is_nothrow_move_constructible_v<Image>);
+        static_assert(std::is_copy_constructible_v<ImageWrite>);
+        static_assert(std::is_copy_assignable_v<ImageWrite>);
+        static_assert(std::is_move_constructible_v<ImageWrite>);
+        static_assert(std::is_nothrow_move_constructible_v<ImageWrite>);
 
-        Image moved;
-        Image copy = moved;
+        ImageWrite moved;
+        ImageWrite copy = moved;
         const std::filesystem::path path = outputDir / "from_copy.png";
         copy.savePNG(rgb.data(), kWidth, kHeight, path);
-        CHECK_MESSAGE(fileSize(path) > 0, "a copied Image must still encode");
+        CHECK_MESSAGE(fileSize(path) > 0, "a copied ImageWrite must still encode");
+    }
+
+    // --------------------------------------------------------
+    section("ImageRead: default construction is inert");
+    // --------------------------------------------------------
+    {
+        ImageRead unloaded;
+        CHECK(throwsAs<std::logic_error>([&] { (void)unloaded.width(); }));
+        CHECK(throwsAs<std::logic_error>([&] { (void)unloaded.height(); }));
+        // The loaded check must come first: even a nonsensical coordinate
+        // reports that there is no image rather than an out-of-range pixel.
+        CHECK(throwsAs<std::logic_error>([&] { (void)unloaded.pixel_data(-1, -1); }));
+        CHECK(throwsAs<std::logic_error>([&] { (void)unloaded.pixel_data(0, 0); }));
+    }
+
+    // --------------------------------------------------------
+    section("ImageRead: PNG round trip through the path constructor");
+    // --------------------------------------------------------
+    {
+        const std::vector<unsigned char> known = makeKnownPattern(kKnownWidth, kKnownHeight);
+        const std::filesystem::path path = outputDir / "read_known.png";
+        image.savePNG(known.data(), kKnownWidth, kKnownHeight, path);
+
+        ImageRead reader(path);
+        CHECK(reader.width() == kKnownWidth);
+        CHECK(reader.height() == kKnownHeight);
+
+        bool exact = true;
+        for (int y = 0; y < kKnownHeight && exact; ++y) {
+            for (int x = 0; x < kKnownWidth && exact; ++x) {
+                const std::size_t index =
+                    (static_cast<std::size_t>(y) * kKnownWidth + x) * 3;
+                exact = colorEquals(reader.pixel_data(x, y), known[index], known[index + 1],
+                                    known[index + 2]);
+            }
+        }
+        CHECK_MESSAGE(exact, "every PNG pixel must decode to its original 8-bit RGB value");
+
+        // A literal '%' in a file name must not be mistaken for an
+        // image-sequence pattern, mirroring the writer's guarantee.
+        const std::filesystem::path percentPath = outputDir / "read_literal%03d.png";
+        image.savePNG(known.data(), kKnownWidth, kKnownHeight, percentPath);
+        ImageRead percentReader(percentPath);
+        CHECK(percentReader.width() == kKnownWidth && percentReader.height() == kKnownHeight);
+        CHECK(colorEquals(percentReader.pixel_data(0, 0), known[0], known[1], known[2]));
+    }
+
+    // --------------------------------------------------------
+    section("ImageRead: 8-bit sRGB samples are linearised");
+    // --------------------------------------------------------
+    {
+        const std::vector<unsigned char> levels = {0,   0,   0,   128, 128,
+                                                   128, 255, 255, 255};
+        const std::filesystem::path path = outputDir / "read_levels.png";
+        image.savePNG(levels.data(), 3, 1, path);
+
+        ImageRead reader(path);
+        const Color black = reader.pixel_data(0, 0);
+        CHECK(black.r() == 0.0 && black.g() == 0.0 && black.b() == 0.0);
+
+        const Color middle = reader.pixel_data(1, 0);
+        const double expected = linearFromSrgb(128);
+        CHECK_MESSAGE(std::abs(middle.r() - expected) <= 1.0e-12 &&
+                          std::abs(middle.g() - expected) <= 1.0e-12 &&
+                          std::abs(middle.b() - expected) <= 1.0e-12,
+                      "128/255 sRGB must decode to its linear-light value");
+        // 128/255 is 0.502 encoded but about 0.216 linear, so a regression to
+        // raw pass-through values cannot go unnoticed.
+        CHECK_MESSAGE(middle.r() < 0.25,
+                      "encoded samples must not be returned without linearisation");
+
+        const Color white = reader.pixel_data(2, 0);
+        CHECK(white.r() == 1.0 && white.g() == 1.0 && white.b() == 1.0);
+    }
+
+    // --------------------------------------------------------
+    section("ImageRead: coordinates are validated");
+    // --------------------------------------------------------
+    {
+        ImageRead reader(outputDir / "read_known.png");
+        CHECK(throwsAs<std::out_of_range>([&] { (void)reader.pixel_data(-1, 0); }));
+        CHECK(throwsAs<std::out_of_range>([&] { (void)reader.pixel_data(0, -1); }));
+        CHECK(throwsAs<std::out_of_range>([&] { (void)reader.pixel_data(kKnownWidth, 0); }));
+        CHECK(throwsAs<std::out_of_range>([&] { (void)reader.pixel_data(0, kKnownHeight); }));
+        CHECK(throwsAs<std::out_of_range>(
+            [&] { (void)reader.pixel_data(kKnownWidth, kKnownHeight); }));
+        CHECK(throwsAs<std::out_of_range>([&] { (void)reader.pixel_data(1000000, 1000000); }));
+    }
+
+    // --------------------------------------------------------
+    section("ImageRead: load() and relative paths");
+    // --------------------------------------------------------
+    {
+        const std::vector<unsigned char> known = makeKnownPattern(kKnownWidth, kKnownHeight);
+        const std::filesystem::path absolutePath = outputDir / "read_load.png";
+        image.savePNG(known.data(), kKnownWidth, kKnownHeight, absolutePath);
+
+        ImageRead reader;
+        reader.load(absolutePath);
+        CHECK(reader.width() == kKnownWidth && reader.height() == kKnownHeight);
+        const std::size_t lastIndex =
+            (static_cast<std::size_t>(kKnownHeight - 1) * kKnownWidth + (kKnownWidth - 1)) * 3;
+        CHECK(colorEquals(reader.pixel_data(kKnownWidth - 1, kKnownHeight - 1), known[lastIndex],
+                          known[lastIndex + 1], known[lastIndex + 2]));
+
+        // A relative path resolves against the working directory, so the file
+        // is created beneath it rather than in the temporary directory, which
+        // can live on another drive.
+        std::error_code directoryError;
+        const std::filesystem::path workingDirectory =
+            std::filesystem::current_path(directoryError);
+        if (directoryError) {
+            report(false, "could not query the working directory: " + directoryError.message());
+        } else {
+            const std::filesystem::path relativeDirectory =
+                workingDirectory / "RayTracerImageReadTemp";
+            std::filesystem::create_directories(relativeDirectory, directoryError);
+            if (directoryError) {
+                report(false, "could not create the relative-path directory: " +
+                                  directoryError.message());
+            } else {
+                image.savePNG(known.data(), kKnownWidth, kKnownHeight,
+                              relativeDirectory / "relative.png");
+                ImageRead relativeReader(relativeDirectory.filename() / "relative.png");
+                CHECK(relativeReader.width() == kKnownWidth);
+                CHECK(relativeReader.height() == kKnownHeight);
+                const std::size_t middleIndex =
+                    (static_cast<std::size_t>(1) * kKnownWidth + 1) * 3;
+                CHECK(colorEquals(relativeReader.pixel_data(1, 1), known[middleIndex],
+                                  known[middleIndex + 1], known[middleIndex + 2]));
+                std::filesystem::remove_all(relativeDirectory, directoryError);
+            }
+        }
+    }
+
+    // --------------------------------------------------------
+    section("ImageRead: reloading replaces, failures preserve");
+    // --------------------------------------------------------
+    {
+        constexpr int kFirstWidth = 6;
+        constexpr int kFirstHeight = 3;
+        constexpr int kSecondWidth = 4;
+        constexpr int kSecondHeight = 5;
+
+        const std::vector<unsigned char> first = makeKnownPattern(kFirstWidth, kFirstHeight);
+        const std::vector<unsigned char> second = makeKnownPattern(kSecondWidth, kSecondHeight);
+        const std::filesystem::path firstPath = outputDir / "read_reload_first.png";
+        const std::filesystem::path secondPath = outputDir / "read_reload_second.png";
+        image.savePNG(first.data(), kFirstWidth, kFirstHeight, firstPath);
+        image.savePNG(second.data(), kSecondWidth, kSecondHeight, secondPath);
+
+        ImageRead reader(firstPath);
+        CHECK(reader.width() == kFirstWidth && reader.height() == kFirstHeight);
+
+        reader.load(secondPath);
+        CHECK(reader.width() == kSecondWidth && reader.height() == kSecondHeight);
+        const std::size_t secondLast =
+            (static_cast<std::size_t>(kSecondHeight - 1) * kSecondWidth + (kSecondWidth - 1)) * 3;
+        CHECK(colorEquals(reader.pixel_data(kSecondWidth - 1, kSecondHeight - 1),
+                          second[secondLast], second[secondLast + 1], second[secondLast + 2]));
+
+        // A failed reload must not disturb the image that is already loaded.
+        const std::filesystem::path corruptedPath = outputDir / "read_reload_corrupted.png";
+        writeTruncatedFile(secondPath, corruptedPath, 40);
+        bool corruptRejected = throwsAs<std::runtime_error>([&] { reader.load(corruptedPath); });
+        CHECK_MESSAGE(corruptRejected, "a truncated PNG must be rejected");
+        CHECK_MESSAGE(reader.width() == kSecondWidth && reader.height() == kSecondHeight,
+                      "a failed reload must keep the previous dimensions");
+        CHECK_MESSAGE(colorEquals(reader.pixel_data(0, 0), second[0], second[1], second[2]),
+                      "a failed reload must keep the previous pixels");
+
+        const std::filesystem::path missingPath = outputDir / "read_reload_missing.png";
+        CHECK(throwsAs<std::runtime_error>([&] { reader.load(missingPath); }));
+        CHECK(reader.width() == kSecondWidth && reader.height() == kSecondHeight);
+    }
+
+    // --------------------------------------------------------
+    section("ImageRead: invalid inputs are reported");
+    // --------------------------------------------------------
+    {
+        CHECK(throwsAs<std::invalid_argument>([] { (void)ImageRead(std::filesystem::path{}); }));
+
+        const std::filesystem::path missing = outputDir / "read_does_not_exist.png";
+        CHECK(throwsAs<std::runtime_error>([&] { (void)ImageRead(missing); }));
+
+        const std::filesystem::path garbage = outputDir / "read_garbage.bin";
+        writeRawFile(garbage, "This is not an image file, just some bytes.");
+        CHECK(throwsAs<std::runtime_error>([&] { (void)ImageRead(garbage); }));
+
+        CHECK(throwsAs<std::runtime_error>([&] { (void)ImageRead(outputDir); }));
+    }
+
+    // --------------------------------------------------------
+    section("ImageRead: alpha is discarded and grayscale is expanded");
+    // --------------------------------------------------------
+    {
+        const std::vector<unsigned char> source = makeRgbPattern(kWidth, kHeight);
+        const std::vector<unsigned char> rgba = makeRgbaPattern(kWidth, kHeight);
+        const std::filesystem::path rgbaPath = outputDir / "read_rgba.png";
+        image.savePNG(rgba.data(), kWidth, kHeight, rgbaPath, ImageWrite::PixelFormat::RGBA32);
+
+        ImageRead alphaReader(rgbaPath);
+        CHECK(alphaReader.width() == kWidth && alphaReader.height() == kHeight);
+        bool rgbIntact = true;
+        for (int y = 0; y < kHeight && rgbIntact; ++y) {
+            for (int x = 0; x < kWidth && rgbIntact; ++x) {
+                const std::size_t index = (static_cast<std::size_t>(y) * kWidth + x) * 3;
+                rgbIntact =
+                    colorEquals(alphaReader.pixel_data(x, y), source[index], source[index + 1],
+                                source[index + 2]);
+            }
+        }
+        CHECK_MESSAGE(rgbIntact,
+                      "RGBA sources must keep their RGB samples when alpha is discarded");
+
+        const std::vector<unsigned char> gray = makeGrayPattern(kWidth, kHeight);
+        const std::filesystem::path grayPath = outputDir / "read_gray.png";
+        image.savePNG(gray.data(), kWidth, kHeight, grayPath, ImageWrite::PixelFormat::GRAY8);
+        ImageRead grayReader(grayPath);
+        CHECK(grayReader.width() == kWidth && grayReader.height() == kHeight);
+        bool grayExpanded = true;
+        for (int y = 0; y < kHeight && grayExpanded; ++y) {
+            for (int x = 0; x < kWidth && grayExpanded; ++x) {
+                const unsigned char sample = gray[static_cast<std::size_t>(y) * kWidth + x];
+                grayExpanded = colorEquals(grayReader.pixel_data(x, y), sample, sample, sample);
+            }
+        }
+        CHECK_MESSAGE(grayExpanded,
+                      "grayscale samples must expand to equal r == g == b channels");
+    }
+
+    // --------------------------------------------------------
+    section("ImageRead: BMP and JPEG files decode");
+    // --------------------------------------------------------
+    {
+        const std::vector<unsigned char> source = makeRgbPattern(kWidth, kHeight);
+
+        if (bmpAvailable) {
+            const std::filesystem::path path = outputDir / "read_rgb.bmp";
+            image.saveBMP(source.data(), kWidth, kHeight, path);
+            ImageRead reader(path);
+            CHECK(reader.width() == kWidth && reader.height() == kHeight);
+            bool exact = true;
+            for (int y = 0; y < kHeight && exact; ++y) {
+                for (int x = 0; x < kWidth && exact; ++x) {
+                    const std::size_t index = (static_cast<std::size_t>(y) * kWidth + x) * 3;
+                    exact = colorEquals(reader.pixel_data(x, y), source[index], source[index + 1],
+                                        source[index + 2]);
+                }
+            }
+            CHECK_MESSAGE(exact, "BMP must decode pixel-exactly");
+        }
+
+        if (jpegAvailable) {
+            const std::filesystem::path path = outputDir / "read_rgb.jpg";
+            image.saveJPEG(source.data(), kWidth, kHeight, path, ImageWrite::PixelFormat::RGB24, 0,
+                           95);
+            ImageRead reader(path);
+            CHECK(reader.width() == kWidth && reader.height() == kHeight);
+
+            double totalError = 0.0;
+            std::size_t channelCount = 0;
+            for (int y = 0; y < kHeight; ++y) {
+                for (int x = 0; x < kWidth; ++x) {
+                    const std::size_t index = (static_cast<std::size_t>(y) * kWidth + x) * 3;
+                    const Color color = reader.pixel_data(x, y);
+                    totalError += std::abs(color.r() - linearFromSrgb(source[index])) +
+                                  std::abs(color.g() - linearFromSrgb(source[index + 1])) +
+                                  std::abs(color.b() - linearFromSrgb(source[index + 2]));
+                    channelCount += 3;
+                }
+            }
+            const double mae = totalError / static_cast<double>(channelCount);
+            std::cout << "  JPEG decode linear MAE = " << mae << '\n';
+            CHECK_MESSAGE(mae < 0.02, "JPEG decoding must stay close to the source");
+        }
+    }
+
+    // --------------------------------------------------------
+    section("ImageRead: repeated loading, copies and moves");
+    // --------------------------------------------------------
+    {
+        static_assert(std::is_copy_constructible_v<ImageRead>);
+        static_assert(std::is_copy_assignable_v<ImageRead>);
+        static_assert(std::is_move_constructible_v<ImageRead>);
+        static_assert(std::is_move_assignable_v<ImageRead>);
+        static_assert(std::is_nothrow_move_constructible_v<ImageRead>);
+        static_assert(std::is_nothrow_move_assignable_v<ImageRead>);
+
+        const std::vector<unsigned char> known = makeKnownPattern(kKnownWidth, kKnownHeight);
+        const std::filesystem::path path = outputDir / "read_known.png";
+        const auto patternAt = [&known](const int x, const int y, const int channel) {
+            return known[(static_cast<std::size_t>(y) * kKnownWidth + x) * 3 +
+                         static_cast<std::size_t>(channel)];
+        };
+
+        ImageRead reader(path);
+        bool stable = true;
+        for (int iteration = 0; iteration < 25 && stable; ++iteration) {
+            reader.load(path);
+            ImageRead temporary(path);
+            stable = reader.width() == kKnownWidth && reader.height() == kKnownHeight &&
+                     temporary.width() == kKnownWidth && temporary.height() == kKnownHeight &&
+                     colorEquals(reader.pixel_data(0, 0), patternAt(0, 0, 0), patternAt(0, 0, 1),
+                                 patternAt(0, 0, 2));
+        }
+        CHECK_MESSAGE(stable, "repeated loads must keep returning the same pixels");
+
+        ImageRead copy(reader);
+        CHECK(copy.width() == kKnownWidth && copy.height() == kKnownHeight);
+        CHECK(colorEquals(copy.pixel_data(kKnownWidth - 1, kKnownHeight - 1),
+                          patternAt(kKnownWidth - 1, kKnownHeight - 1, 0),
+                          patternAt(kKnownWidth - 1, kKnownHeight - 1, 1),
+                          patternAt(kKnownWidth - 1, kKnownHeight - 1, 2)));
+
+        ImageRead copyAssigned;
+        copyAssigned = reader;
+        CHECK(colorEquals(copyAssigned.pixel_data(1, 1), patternAt(1, 1, 0), patternAt(1, 1, 1),
+                          patternAt(1, 1, 2)));
+
+        ImageRead moved(std::move(reader));
+        CHECK(moved.width() == kKnownWidth && moved.height() == kKnownHeight);
+        CHECK(colorEquals(moved.pixel_data(2, 2), patternAt(2, 2, 0), patternAt(2, 2, 1),
+                          patternAt(2, 2, 2)));
+        CHECK_MESSAGE(throwsAs<std::logic_error>([&] { (void)reader.width(); }),
+                      "a moved-from reader must report itself as unloaded");
+
+        ImageRead moveAssigned;
+        moveAssigned = std::move(moved);
+        CHECK(moveAssigned.width() == kKnownWidth && moveAssigned.height() == kKnownHeight);
+        CHECK_MESSAGE(throwsAs<std::logic_error>([&] { (void)moved.height(); }),
+                      "a move-assigned-from reader must report itself as unloaded");
+    }
+
+    // --------------------------------------------------------
+    section("ImageTexture: linear samples and edge coordinates");
+    // --------------------------------------------------------
+    {
+        // One row: white, mid-gray, black.
+        const std::vector<unsigned char> levels = {255, 255, 255, 128, 128, 128, 0, 0, 0};
+        const std::filesystem::path path = outputDir / "texture_levels.png";
+        image.savePNG(levels.data(), 3, 1, path);
+
+        const ImageTexture texture(path.string());
+        const Point3 point(0.0, 0.0, 0.0);
+
+        // v = 1 flips to row 0.
+        CHECK(colorEquals(texture.value(0.0, 1.0, point), 255, 255, 255));
+        CHECK(colorEquals(texture.value(0.5, 1.0, point), 128, 128, 128));
+
+        // u = 1 maps to width and the v flip maps to height; both are one
+        // past the last pixel and must clamp instead of throwing.
+        bool edgeWorked = true;
+        Color edge;
+        try {
+            edge = texture.value(1.0, 0.0, point);
+        } catch (const std::exception& exception) {
+            edgeWorked = false;
+            std::cout << "  edge sampling rejected: " << exception.what() << '\n';
+        }
+        CHECK_MESSAGE(edgeWorked, "edge texture coordinates must clamp to the last pixel");
+        if (edgeWorked) {
+            CHECK(colorEquals(edge, 0, 0, 0));
+        }
     }
 
     std::cout << '\n' << (g_failures == 0 ? "PASSED" : "FAILED") << ": " << (g_checks - g_failures)

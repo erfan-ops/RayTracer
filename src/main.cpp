@@ -10,7 +10,7 @@
 
 
 void bouncing_spheres() {
-    Image image{};
+    ImageWrite image{};
 
     const size_t width = 400ull;
     const size_t height = 225ull;
@@ -124,8 +124,8 @@ void bouncing_spheres() {
     const unsigned char* data = cam.shot(world);
 
     // Save the image
-    if (Image::isFormatAvailable(Image::Format::PNG)) {
-        image.savePNG(data, cam.width(), cam.height(), "out/output.png", Image::PixelFormat::RGB24);
+    if (ImageWrite::isFormatAvailable(ImageWrite::Format::PNG)) {
+        image.savePNG(data, cam.width(), cam.height(), "out/output.png", ImageWrite::PixelFormat::RGB24);
     }
     else {
         std::cerr << "Format was unavailable" << std::endl;
@@ -134,7 +134,7 @@ void bouncing_spheres() {
 
 
 void checkered_spheres() {
-    Image image{};
+    ImageWrite image{};
 
     const size_t width = 400ull;
     const size_t height = 225ull;
@@ -175,8 +175,46 @@ void checkered_spheres() {
     const unsigned char* data = cam.shot(world);
 
     // Save the image
-    if (Image::isFormatAvailable(Image::Format::PNG)) {
-        image.savePNG(data, cam.width(), cam.height(), "out/output.png", Image::PixelFormat::RGB24);
+    if (ImageWrite::isFormatAvailable(ImageWrite::Format::PNG)) {
+        image.savePNG(data, cam.width(), cam.height(), "out/output.png", ImageWrite::PixelFormat::RGB24);
+    }
+    else {
+        std::cerr << "Format was unavailable" << std::endl;
+    }
+}
+
+
+void earth() {
+    auto earth_texture = std::make_shared<ImageTexture>("images/0F9GANogspBRfY3sR-scaled.jpg");
+    auto earth_surface = std::make_shared<Lambertian>(earth_texture);
+    auto globe = std::make_shared<Sphere>(Point3(0,0,0), 2, earth_surface);
+
+    ImageWrite image{};
+
+    const size_t width = 400ull;
+    const size_t height = 225ull;
+
+    Camera cam(
+        20.0,
+        Point3(0.0, 0.0, 12.0),
+        Point3(0.0, 0.0, 0.0),
+        Vec3(0.0, 1.0, 0.0),
+        width,
+        height,
+        300,
+        50,
+        0.0,
+        10.0
+    );
+
+    HittableList world;
+    world.add(globe);
+
+    const unsigned char* data = cam.shot(world);
+
+    // Save the image
+    if (ImageWrite::isFormatAvailable(ImageWrite::Format::PNG)) {
+        image.savePNG(data, cam.width(), cam.height(), "out/output.png", ImageWrite::PixelFormat::RGB24);
     }
     else {
         std::cerr << "Format was unavailable" << std::endl;
@@ -185,9 +223,10 @@ void checkered_spheres() {
 
 
 int main() {
-    switch (2) {
+    switch (3) {
         case 1: bouncing_spheres();  break;
         case 2: checkered_spheres(); break;
+        case 3: earth();             break;
     }
 
     return 0;
