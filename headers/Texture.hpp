@@ -2,6 +2,7 @@
 
 #include <Vec3.hpp>
 #include <Image.hpp>
+#include <Perlin.hpp>
 
 #include <vector>
 
@@ -72,4 +73,15 @@ public:
 
 private:
     ImageRead img;
+};
+
+class NoiseTexture : public Texture {
+public:
+    NoiseTexture(double scale);
+
+    Color value(double u, double v, const Point3& p) const override;
+
+private:
+    Perlin noise;
+    double m_scale;
 };

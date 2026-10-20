@@ -222,11 +222,49 @@ void earth() {
 }
 
 
+void perlin_spheres() {
+    HittableList world;
+
+    auto pertext = std::make_shared<NoiseTexture>(4.0);
+    world.add(std::make_shared<Sphere>(Point3(0,-1000,0), 1000, std::make_shared<Lambertian>(pertext)));
+    world.add(std::make_shared<Sphere>(Point3(0,2,0), 2, std::make_shared<Lambertian>(pertext)));
+
+    ImageWrite image{};
+
+    const size_t width = 400ull;
+    const size_t height = 225ull;
+
+    Camera cam(
+        20.0,
+        Point3(13.0, 2.0, 3.0),
+        Point3(0.0, 0.0, 0.0),
+        Vec3(0.0, 1.0, 0.0),
+        width,
+        height,
+        100,
+        50,
+        0.0,
+        10.0
+    );
+
+    const unsigned char* data = cam.shot(world);
+
+    // Save the image
+    if (ImageWrite::isFormatAvailable(ImageWrite::Format::PNG)) {
+        image.savePNG(data, cam.width(), cam.height(), "out/output.png", ImageWrite::PixelFormat::RGB24);
+    }
+    else {
+        std::cerr << "Format was unavailable" << std::endl;
+    }
+}
+
+
 int main() {
-    switch (3) {
+    switch (4) {
         case 1: bouncing_spheres();  break;
         case 2: checkered_spheres(); break;
         case 3: earth();             break;
+        case 4: perlin_spheres();    break;
     }
 
     return 0;

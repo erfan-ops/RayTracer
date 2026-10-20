@@ -193,6 +193,7 @@ set(APP_SOURCES
     src/Interval.cpp
     src/main.cpp
     src/Material.cpp
+    src/Perlin.cpp
     src/Ray.cpp
     src/Renderer.cpp
     src/Sphere.cpp
@@ -201,6 +202,7 @@ set(APP_SOURCES
     src/textures/Gradient.cpp
     src/textures/Image.cpp
     src/textures/MultiGradient.cpp
+    src/textures/Noise.cpp
     src/textures/SolidColor.cpp
 )
 
@@ -214,6 +216,7 @@ set(HEADERS
     headers/Image.hpp
     headers/Interval.hpp
     headers/Material.hpp
+    headers/Perlin.hpp
     headers/Ray.hpp
     headers/Renderer.hpp
     headers/Sphere.hpp
@@ -255,6 +258,7 @@ if(RAYTRACER_BUILD_TESTS)
         src/ImageWrite.cpp
         src/Interval.cpp
         src/Vec3.cpp
+        src/Perlin.cpp
         headers/Image.hpp
         headers/Interval.hpp
         headers/Texture.hpp
@@ -263,6 +267,7 @@ if(RAYTRACER_BUILD_TESTS)
         src/textures/Gradient.cpp
         src/textures/Image.cpp
         src/textures/MultiGradient.cpp
+        src/textures/Noise.cpp
         src/textures/SolidColor.cpp
     )
 
