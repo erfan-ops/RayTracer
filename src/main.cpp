@@ -60,17 +60,20 @@ void cornell_box() {
     auto green = std::make_shared<Lambertian>(Color(.12, .45, .15));
     auto light = std::make_shared<DiffuseLight>(Color(15, 15, 15));
 
-    world.add(std::make_shared<Quad>(Point3(555,0,0)    , Vec3(0,555,0),  Vec3(0,0,555), green));
-    world.add(std::make_shared<Quad>(Point3(0,0,0)      , Vec3(0,555,0),  Vec3(0,0,555), red));
+    world.add(std::make_shared<Quad>(Point3(555,0,0),     Vec3(0,555,0),  Vec3(0,0,555), green));
+    world.add(std::make_shared<Quad>(Point3(0,0,0),       Vec3(0,555,0),  Vec3(0,0,555), red));
     world.add(std::make_shared<Quad>(Point3(343,554,332), Vec3(-130,0,0), Vec3(0,0,-105), light));
-    world.add(std::make_shared<Quad>(Point3(0,0,0)      , Vec3(555,0,0),  Vec3(0,0,555), white));
+    world.add(std::make_shared<Quad>(Point3(0,0,0),       Vec3(555,0,0),  Vec3(0,0,555), white));
     world.add(std::make_shared<Quad>(Point3(555,555,555), Vec3(-555,0,0), Vec3(0,0,-555), white));
-    world.add(std::make_shared<Quad>(Point3(0,0,555)    , Vec3(555,0,0),  Vec3(0,555,0), white));
+    world.add(std::make_shared<Quad>(Point3(0,0,555),     Vec3(555,0,0),  Vec3(0,555,0), white));
+
+    world.add(box(Point3(130, 0, 65), Point3(295, 165, 230), white));
+    world.add(box(Point3(265, 0, 295), Point3(430, 330, 460), white));
 
     ImageWrite image{};
 
-    const size_t width = 600ull;
-    const size_t height = 600ull;
+    const size_t width = 300ull;
+    const size_t height = 300ull;
 
     Camera cam(
         40.0,
@@ -79,7 +82,7 @@ void cornell_box() {
         Vec3(0.0, 1.0, 0.0),
         width,
         height,
-        200,
+        1200,
         50,
         0.0,
         10.0,
