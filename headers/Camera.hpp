@@ -16,7 +16,8 @@ public:
         const int samplesPerPixel,
         const int maxDepth,
         const double defocus_angle,
-        const double focus_dist
+        const double focus_dist,
+        const Color& backgroundColor
     );
     ~Camera();
 
@@ -65,4 +66,6 @@ private:
 
     double m_defocusAngle;
     double m_focusDist;
+
+    Color m_bgColor;
 };

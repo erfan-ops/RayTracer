@@ -15,6 +15,8 @@ public:
         Color& attenuation,
         Ray& scattered
     ) const;
+
+    virtual Color emitted(double u, double v, const Point3& p) const;
 };
 
 
@@ -73,4 +75,16 @@ private:
 
 private:
     double m_refractionIndex;
+};
+
+
+class DiffuseLight : public Material {
+public:
+    DiffuseLight(std::shared_ptr<Texture> tex);
+    DiffuseLight(const Color& emit);
+
+    Color emitted(double u, double v, const Point3& p) const override;
+
+private:
+    std::shared_ptr<Texture> tex;
 };

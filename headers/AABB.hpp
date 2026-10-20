@@ -20,6 +20,14 @@ public:
 
    int longest_axis() const;
 
+private:
+    void pad_to_minimums() {
+        double delta = 0.0001;
+        if (x.size() < delta) x = x.expand(delta);
+        if (y.size() < delta) y = y.expand(delta);
+        if (z.size() < delta) z = z.expand(delta);
+    }
+
 public:
     Interval x, y, z;
     static const AABB empty, universe;
