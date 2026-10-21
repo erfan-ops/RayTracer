@@ -18,7 +18,7 @@ public:
 
     bool hit(const Ray& r, Interval ray_t) const;
 
-   int longest_axis() const;
+    int longest_axis() const;
 
 private:
     void pad_to_minimums() {
@@ -32,3 +32,6 @@ public:
     Interval x, y, z;
     static const AABB empty, universe;
 };
+
+AABB operator+(const AABB& bbox, const Vec3& offset);
+AABB operator+(const Vec3& offset, const AABB& bbox);

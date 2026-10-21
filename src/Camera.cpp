@@ -2,8 +2,8 @@
 #include <Ray.hpp>
 #include <HittableList.hpp>
 #include <Common.hpp>
-#include <Sphere.hpp>
 #include <Interval.hpp>
+#include <Material.hpp>
 
 #include <thread>
 

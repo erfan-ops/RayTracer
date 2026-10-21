@@ -1,4 +1,4 @@
-#include <Quad.hpp>
+#include <hittables/Quad.hpp>
 
 
 Quad::Quad(

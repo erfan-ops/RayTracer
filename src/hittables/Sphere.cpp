@@ -1,4 +1,4 @@
-#include <Sphere.hpp>
+#include <hittables/Sphere.hpp>
 
 Sphere::Sphere(
     const Point3& static_center,

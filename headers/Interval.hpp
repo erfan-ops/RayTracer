@@ -34,3 +34,6 @@ private:
     double m_min;
     double m_max;
 };
+
+Interval operator+(const Interval& ival, double displacement);
+Interval operator+(double displacement, const Interval& ival);

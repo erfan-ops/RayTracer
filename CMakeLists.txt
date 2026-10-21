@@ -187,6 +187,7 @@ set(APP_SOURCES
     src/AABB.cpp
     src/BVH.cpp
     src/Camera.cpp
+    src/Hittable.cpp
     src/HittableList.cpp
     src/ImageRead.cpp
     src/ImageWrite.cpp
@@ -194,11 +195,11 @@ set(APP_SOURCES
     src/main.cpp
     src/Material.cpp
     src/Perlin.cpp
-    src/Quad.cpp
     src/Ray.cpp
     src/Renderer.cpp
-    src/Sphere.cpp
     src/Vec3.cpp
+    src/hittables/Quad.cpp
+    src/hittables/Sphere.cpp
     src/materials/Dielectric.cpp
     src/materials/DiffuseLight.cpp
     src/materials/Lambertian.cpp
@@ -222,12 +223,12 @@ set(HEADERS
     headers/Interval.hpp
     headers/Material.hpp
     headers/Perlin.hpp
-    headers/Quad.hpp
     headers/Ray.hpp
     headers/Renderer.hpp
-    headers/Sphere.hpp
     headers/Texture.hpp
     headers/Vec3.hpp
+    headers/hittables/Quad.hpp
+    headers/hittables/Sphere.hpp
 )
 
 # ============================================================

@@ -4,8 +4,8 @@
 #include <Renderer.hpp>
 #include <Ray.hpp>
 #include <Camera.hpp>
-#include <Sphere.hpp>
-#include <Quad.hpp>
+#include <hittables/Sphere.hpp>
+#include <hittables/Quad.hpp>
 #include <BVH.hpp>
 #include <Texture.hpp>
 
@@ -67,8 +67,15 @@ void cornell_box() {
     world.add(std::make_shared<Quad>(Point3(555,555,555), Vec3(-555,0,0), Vec3(0,0,-555), white));
     world.add(std::make_shared<Quad>(Point3(0,0,555),     Vec3(555,0,0),  Vec3(0,555,0), white));
 
-    world.add(box(Point3(130, 0, 65), Point3(295, 165, 230), white));
-    world.add(box(Point3(265, 0, 295), Point3(430, 330, 460), white));
+    std::shared_ptr<Hittable> box1 = box(Point3(0,0,0), Point3(165,330,165), white);
+    box1 = std::make_shared<RotateY>(box1, 15);
+    box1 = std::make_shared<Translate>(box1, Vec3(265,0,295));
+    world.add(box1);
+
+    std::shared_ptr<Hittable> box2 = box(Point3(0,0,0), Point3(165,165,165), white);
+    box2 = std::make_shared<RotateY>(box2, -18);
+    box2 = std::make_shared<Translate>(box2, Vec3(130,0,65));
+    world.add(box2);
 
     ImageWrite image{};
 
@@ -82,7 +89,7 @@ void cornell_box() {
         Vec3(0.0, 1.0, 0.0),
         width,
         height,
-        1200,
+        200,
         50,
         0.0,
         10.0,
