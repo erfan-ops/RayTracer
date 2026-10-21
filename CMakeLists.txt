@@ -198,10 +198,12 @@ set(APP_SOURCES
     src/Ray.cpp
     src/Renderer.cpp
     src/Vec3.cpp
+    src/hittables/ConstantMedium.cpp
     src/hittables/Quad.cpp
     src/hittables/Sphere.cpp
     src/materials/Dielectric.cpp
     src/materials/DiffuseLight.cpp
+    src/materials/Isotropic.cpp
     src/materials/Lambertian.cpp
     src/materials/Metal.cpp
     src/textures/Checker.cpp
@@ -227,6 +229,7 @@ set(HEADERS
     headers/Renderer.hpp
     headers/Texture.hpp
     headers/Vec3.hpp
+    headers/hittables/ConstantMedium.hpp
     headers/hittables/Quad.hpp
     headers/hittables/Sphere.hpp
 )
