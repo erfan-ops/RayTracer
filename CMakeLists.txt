@@ -201,6 +201,7 @@ set(APP_SOURCES
     src/hittables/ConstantMedium.cpp
     src/hittables/Quad.cpp
     src/hittables/Sphere.cpp
+    src/hittables/Triangle.cpp
     src/materials/Dielectric.cpp
     src/materials/DiffuseLight.cpp
     src/materials/Isotropic.cpp
@@ -232,6 +233,7 @@ set(HEADERS
     headers/hittables/ConstantMedium.hpp
     headers/hittables/Quad.hpp
     headers/hittables/Sphere.hpp
+    headers/hittables/Triangle.hpp
 )
 
 # ============================================================

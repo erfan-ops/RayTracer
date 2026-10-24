@@ -2,10 +2,13 @@
 #include <Interval.hpp>
 
 
-Renderer::Renderer(size_t width, size_t height)
-: m_width(width), m_height(height), m_imgSize(width * height * 3) {
-    m_img = new unsigned char[m_imgSize];
-}
+Renderer::Renderer(
+    size_t width,
+    size_t height
+) : m_width(width)
+  , m_height(height)
+  , m_img(width * height * 3)
+{}
 
 static inline double linear_to_gamma(double linear_component)
 {
@@ -30,6 +33,6 @@ void Renderer::write_color(const Color& pixel_color, size_t idx) {
     m_img[idx + 2] = bbyte;
 }
 
-const unsigned char* Renderer::get_image() const { return m_img; }
+const unsigned char* Renderer::get_image() const { return m_img.data(); }
 const size_t Renderer::width() const { return m_width; }
 const size_t Renderer::height() const { return m_height; }

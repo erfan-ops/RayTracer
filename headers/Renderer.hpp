@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Vec3.hpp>
+#include <vector>
 
 
 class Renderer {
@@ -14,8 +15,7 @@ public:
     const size_t height() const;
 
 private:
-    unsigned char* m_img;
-    size_t m_imgSize;
+    std::vector<unsigned char> m_img;
     size_t m_idx{0};
 
     size_t m_width;
