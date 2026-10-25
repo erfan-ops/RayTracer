@@ -5,8 +5,9 @@ Quad::Quad(
     const Point3& Q,
     const Vec3& u,
     const Vec3& v,
-    std::shared_ptr<Material> mat
-) : Q(Q), u(u), v(v), mat(mat)
+    std::shared_ptr<Material> mat,
+    double cornerRadius
+) : Q(Q), u(u), v(v), mat(mat), radius(cornerRadius)
 {
     auto n = cross(u, v);
     normal = unit_vector(n);
@@ -44,12 +45,31 @@ bool Quad::hit(const Ray& r, Interval ray_t, HitRecord& rec) const {
     if (!is_interior(alpha, beta, rec))
         return false;
     
-    // ADDITIONAL FUN :D
-    // double a, b;
-    // a = alpha * 2.0 - 1.0;
-    // b = beta * 2.0 - 1.0;
-    // if (a*a + b*b > 1.0 || a*a + b*b < 0.8)
-    //     return false;
+    // round corners
+    if (radius > 0.0) {
+        const auto a = alpha;
+        const auto b = beta;
+
+        const auto a_min = radius / u.length();
+        const auto b_min = radius / v.length();
+
+        // Reject hits inside any rounded corner.
+        if ((a < a_min && b < b_min) ||
+            (a > 1.0 - a_min && b < b_min) ||
+            (a < a_min && b > 1.0 - b_min) ||
+            (a > 1.0 - a_min && b > 1.0 - b_min)) {
+
+            // Find the nearest corner center in the quad's plane.
+            auto corner_a = a < 0.5 ? a_min : 1.0 - a_min;
+            auto corner_b = b < 0.5 ? b_min : 1.0 - b_min;
+
+            auto corner_center = Q + corner_a * u + corner_b * v;
+            auto distance = (intersection - corner_center).length();
+
+            if (distance > radius)
+                return false;
+        }
+    }
 
     // Ray hits the 2D shape; set the rest of the hit record and return true.
 

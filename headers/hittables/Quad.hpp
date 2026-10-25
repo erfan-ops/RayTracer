@@ -5,7 +5,7 @@
 
 class Quad : public Hittable {
 public:
-    Quad(const Point3& Q, const Vec3& u, const Vec3& v, std::shared_ptr<Material> mat);
+    Quad(const Point3& Q, const Vec3& u, const Vec3& v, std::shared_ptr<Material> mat, double cornerRadius = 0);
 
     virtual void set_bounding_box();
 
@@ -23,6 +23,7 @@ private:
     AABB bbox;
     Vec3 normal;
     double D;
+    double radius;
 };
 
 

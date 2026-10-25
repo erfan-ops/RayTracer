@@ -25,8 +25,8 @@ void simple_light() {
 
     ImageWrite image{};
 
-    const size_t width = 400ull;
-    const size_t height = 225ull;
+    const size_t width = 1280ull;
+    const size_t height = 720ull;
 
     Camera cam(
         20.0,
@@ -35,8 +35,8 @@ void simple_light() {
         Vec3(0.0, 1.0, 0.0),
         width,
         height,
-        100,
-        50,
+        800,
+        80,
         0.0,
         10.0,
         Color(0.0, 0.0, 0.0)
@@ -64,12 +64,12 @@ void cornell_box() {
 
     world.add(std::make_shared<Quad>(Point3(555,0,0),     Vec3(0,555,0),  Vec3(0,0,555), green));
     world.add(std::make_shared<Quad>(Point3(0,0,0),       Vec3(0,555,0),  Vec3(0,0,555), red));
-    world.add(std::make_shared<Quad>(Point3(343,554,332), Vec3(-130,0,0), Vec3(0,0,-105), light));
+    world.add(std::make_shared<Quad>(Point3(343,554,332), Vec3(-130,0,0), Vec3(0,0,-105), light)); // light source
     world.add(std::make_shared<Quad>(Point3(0,0,0),       Vec3(555,0,0),  Vec3(0,0,555), white));
     world.add(std::make_shared<Quad>(Point3(555,555,555), Vec3(-555,0,0), Vec3(0,0,-555), white));
     world.add(std::make_shared<Quad>(Point3(0,0,555),     Vec3(555,0,0),  Vec3(0,555,0), white));
 
-    std::shared_ptr<Hittable> box1 = box(Point3(0,0,0), Point3(165,330,165), white);
+    std::shared_ptr<Hittable> box1 = box(Point3(0,165,0), Point3(165,330,165), white);
     box1 = std::make_shared<RotateY>(box1, 15);
     box1 = std::make_shared<Translate>(box1, Vec3(265,0,295));
     world.add(box1);
@@ -79,10 +79,16 @@ void cornell_box() {
     box2 = std::make_shared<Translate>(box2, Vec3(130,0,65));
     world.add(box2);
 
+    double r = 50;
+    world.add(std::make_shared<Sphere>(Point3(165, 165 + r, 165), r, std::make_shared<Dielectric>(1.5)));
+
+    r = 150;
+    world.add(std::make_shared<Sphere>(Point3(265+82.5, 247.5, 295+82.5), r, std::make_shared<Dielectric>(1.5)));
+
     ImageWrite image{};
 
-    const size_t width = 300ull;
-    const size_t height = 300ull;
+    const size_t width = 500ull;
+    const size_t height = 500ull;
 
     Camera cam(
         40.0,
@@ -91,12 +97,134 @@ void cornell_box() {
         Vec3(0.0, 1.0, 0.0),
         width,
         height,
-        200,
+        500,
         50,
         0.0,
         10.0,
         Color(0.0, 0.0, 0.0)
     );
+
+    const unsigned char* data = cam.shot(world);
+
+    // Save the image
+    if (ImageWrite::isFormatAvailable(ImageWrite::Format::PNG)) {
+        image.savePNG(data, cam.width(), cam.height(), "out/output.png", ImageWrite::PixelFormat::RGB24);
+    }
+    else {
+        std::cerr << "Format was unavailable" << std::endl;
+    }
+}
+
+
+void cornell_box2() {
+    HittableList world;
+
+    auto red    = std::make_shared<Lambertian>(Color(.75, .05, .05));
+    auto purple = std::make_shared<Lambertian>(Color(.4, .05, .7));
+    auto white  = std::make_shared<Lambertian>(Color(.73, .73, .73));
+    auto black  = std::make_shared<Lambertian>(Color(.03, .03, .03));
+    auto green  = std::make_shared<Lambertian>(Color(.05, .55, .05));
+    auto light  = std::make_shared<DiffuseLight>(Color(10, 10, 10));
+    auto minilight  = std::make_shared<DiffuseLight>(Color(105, 105, 105));
+    auto backwall = std::make_shared<Metal>(Color(0.12, 0.12, 0.12), 0.0);
+
+    world.add(std::make_shared<Quad>(Point3(555,0,0),     Vec3(0,555,0),  Vec3(0,0,555), red));
+    world.add(std::make_shared<Quad>(Point3(0,0,0),       Vec3(0,555,0),  Vec3(0,0,555), purple));
+    world.add(std::make_shared<Quad>(Point3(343,554,332), Vec3(-130,0,0), Vec3(0,0,-105), light, 20)); // light source
+    world.add(std::make_shared<Quad>(Point3(0,0,0),       Vec3(555,0,0),  Vec3(0,0,555), green));
+    world.add(std::make_shared<Quad>(Point3(555,555,555), Vec3(-555,0,0), Vec3(0,0,-555), white));
+    world.add(std::make_shared<Quad>(Point3(0,0,555),     Vec3(555,0,0),  Vec3(0,555,0), backwall));
+    // world.add(std::make_shared<Quad>(Point3(-100, -100, -700),     Vec3(700,0,0),  Vec3(0,700,0), white));
+
+    double r = 12;
+    world.add(std::make_shared<Sphere>(Point3(0, 350, 277.5), r, minilight));
+    world.add(std::make_shared<Sphere>(Point3(555, 350, 277.5), r, minilight));
+
+    double lamp_ratio = 2;
+    world.add(std::make_shared<Quad>(Point3(r*2.0 + 10, 350-r*2.0*lamp_ratio, 277.5-r*lamp_ratio), Vec3(0,r*4.0*lamp_ratio,0),  Vec3(0,0,r*2.0*lamp_ratio), black));
+    world.add(std::make_shared<Triangle>(
+        Point3(r*2.0 + 10, 350-r*2.0*lamp_ratio, 277.5-r*lamp_ratio),
+        Point3(r*2.0 + 10, 350-r*2.0*lamp_ratio + r*4.0*lamp_ratio, 277.5-r*lamp_ratio),
+        Point3((r*2.0 + 10) - (r*2.0*lamp_ratio), 350-r*2.0*lamp_ratio + r*2.0*lamp_ratio, 277.5-r*lamp_ratio),
+        black
+    ));
+    world.add(std::make_shared<Triangle>(
+        Point3(r*2.0 + 10, 350-r*2.0*lamp_ratio, 277.5+r*lamp_ratio),
+        Point3(r*2.0 + 10, 350-r*2.0*lamp_ratio + r*4.0*lamp_ratio, 277.5+r*lamp_ratio),
+        Point3((r*2.0 + 10) - (r*2.0*lamp_ratio), 350-r*2.0*lamp_ratio + r*2.0*lamp_ratio, 277.5+r*lamp_ratio),
+        black
+    ));
+
+
+    world.add(std::make_shared<Quad>(Point3(555 - (r*2.0 + 10), 350-r*2.0*lamp_ratio, 277.5-r*lamp_ratio), Vec3(0,r*4.0*lamp_ratio,0),  Vec3(0,0,r*2.0*lamp_ratio), black));
+    world.add(std::make_shared<Triangle>(
+        Point3(555 - (r*2.0 + 10), 350-r*2.0*lamp_ratio, 277.5-r*lamp_ratio),
+        Point3(555 - (r*2.0 + 10), 350-r*2.0*lamp_ratio + r*4.0*lamp_ratio, 277.5-r*lamp_ratio),
+        Point3((555 - (r*2.0 + 10)) + (r*2.0*lamp_ratio), 350-r*2.0*lamp_ratio + r*2.0*lamp_ratio, 277.5-r*lamp_ratio),
+        black
+    ));
+    world.add(std::make_shared<Triangle>(
+        Point3(555 - (r*2.0 + 10), 350-r*2.0*lamp_ratio, 277.5+r*lamp_ratio),
+        Point3(555 - (r*2.0 + 10), 350-r*2.0*lamp_ratio + r*4.0*lamp_ratio, 277.5+r*lamp_ratio),
+        Point3((555 - (r*2.0 + 10)) + (r*2.0*lamp_ratio), 350-r*2.0*lamp_ratio + r*2.0*lamp_ratio, 277.5+r*lamp_ratio),
+        black
+    ));
+
+
+    auto box1Mat = std::make_shared<Metal>(Color(0.20, 0.20, 0.20), 0.6);
+    std::shared_ptr<Hittable> box1 = box(Point3(0,0,0), Point3(165,165,165), box1Mat);
+    box1 = std::make_shared<RotateY>(box1, 30);
+    box1 = std::make_shared<Translate>(box1, Vec3(265,0,200));
+    world.add(box1);
+
+    auto ballMat = std::make_shared<Metal>(Color(0.25, 0.25, 0.25), 0.0);
+    Point3 localCenter(82.5, 165.0 + 82.5, 82.5);
+
+    // Rotate the local point by 30 degrees, then translate.
+    double angle = degrees_to_radians(30.0);
+
+    Point3 sphereCenter(
+        265 + std::cos(angle) * localCenter.x() +
+            std::sin(angle) * localCenter.z(),
+        localCenter.y(),
+        200 - std::sin(angle) * localCenter.x() +
+            std::cos(angle) * localCenter.z()
+    );
+    world.add(std::make_shared<Sphere>(sphereCenter, 82.5, ballMat));
+
+
+    ImageWrite image{};
+
+    const size_t width = 400ull;
+    const size_t height = 400ull;
+
+    Camera cam(
+        45.0,
+        Point3(278, 278, -650),
+        Point3(278, 278, 500),
+        Vec3(0.0, 1.0, 0.0),
+        width,
+        height,
+        500,
+        50,
+        0.0,
+        100.0,
+        Color(0.0, 0.0, 0.0)
+    );
+
+    // Camera cam(
+    //     90.0,
+    //     Point3(278, 278, 278),
+    //     Point3(278, 278, 500),
+    //     Vec3(0.0, 1.0, 0.0),
+    //     width,
+    //     height,
+    //     200,
+    //     20,
+    //     0.0,
+    //     100.0,
+    //     Color(0.0, 0.0, 0.0)
+    // );
 
     const unsigned char* data = cam.shot(world);
 
@@ -227,10 +355,11 @@ void final_scene(int image_width, int samples_per_pixel, int max_depth) {
 
 
 int main() {
-    switch (4) {
-        case 1: simple_light();            break;
-        case 2: cornell_box();             break;
-        case 3: cornell_smoke();           break;
+    switch (5) {
+        case 1: simple_light();               break;
+        case 2: cornell_box();                break;
+        case 5: cornell_box2();                break;
+        case 3: cornell_smoke();              break;
         case 4: final_scene(1080, 1080, 108); break;
     }
 
