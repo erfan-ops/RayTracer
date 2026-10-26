@@ -13,3 +13,7 @@ bool Material::scatter(
 Color Material::emitted(double u, double v, const Point3& p) const {
     return Color(0.0, 0.0, 0.0);
 }
+
+double Material::scattering_pdf(const Ray& r_in, const HitRecord& rec, const Ray& scattered) const {
+    return 0;
+}

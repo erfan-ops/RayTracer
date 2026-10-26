@@ -125,13 +125,13 @@ void cornell_box2() {
     auto black  = std::make_shared<Lambertian>(Color(.03, .03, .03));
     auto green  = std::make_shared<Lambertian>(Color(.05, .55, .05));
     auto light  = std::make_shared<DiffuseLight>(Color(40, 20, 15));
-    auto minilight  = std::make_shared<DiffuseLight>(Color(200, 90, 50));
+    auto minilight = std::make_shared<DiffuseLight>(Color(200, 90, 50));
     auto backwall = std::make_shared<Metal>(Color(0.2, 0.2, 0.2), 0.0);
 
     world.add(std::make_shared<Quad>(Point3(555,0,0),     Vec3(0,555,0),  Vec3(0,0,555), red));
     world.add(std::make_shared<Quad>(Point3(0,0,0),       Vec3(0,555,0),  Vec3(0,0,555), purple));
     world.add(std::make_shared<Quad>(Point3(343,554,332), Vec3(-130,0,0), Vec3(0,0,-105), light, 20)); // light source
-    world.add(std::make_shared<Quad>(Point3(0,0,0),       Vec3(555,0,0),  Vec3(0,0,555), green));
+    world.add(std::make_shared<Quad>(Point3(-5000,0,-5000), Vec3(10555,0,0),  Vec3(0,0,10555), green));
     world.add(std::make_shared<Quad>(Point3(555,555,555), Vec3(-555,0,0), Vec3(0,0,-555), white));
     world.add(std::make_shared<Quad>(Point3(0,0,555),     Vec3(555,0,0),  Vec3(0,555,0), backwall));
     // world.add(std::make_shared<Quad>(Point3(-100, -100, -700),     Vec3(700,0,0),  Vec3(0,700,0), white));
@@ -181,7 +181,7 @@ void cornell_box2() {
     Point3 localCenter(82.5, 165.0 + 82.5, 82.5);
 
     // Rotate the local point by 30 degrees, then translate.
-    double angle = degrees_to_radians(30.0);
+    double angle = degrees_to_radians(25.0);
 
     Point3 sphereCenter(
         265 + std::cos(angle) * localCenter.x() +
@@ -194,26 +194,26 @@ void cornell_box2() {
 
 
     world.add(std::make_shared<Sphere>(Point3(150,70,145), 70, ballMat));
-    world.add(std::make_shared<Sphere>(Point3(300,20,100), 20, std::make_shared<Lambertian>(Color(1.0, 1.0, 0.8))));
+    world.add(std::make_shared<Sphere>(Point3(300,20,100), 20, std::make_shared<Lambertian>(Color(1.0, 0.6, 0.2))));
 
 
     ImageWrite image{};
 
-    const size_t width = 400ull;
-    const size_t height = 400ull;
+    const size_t width = 800ull;
+    const size_t height = 800ull;
 
     Camera cam(
-        45.0,
-        Point3(278, 278, -650),
-        Point3(278, 278, 500),
+        55.0,
+        Point3(400, 400, -750),
+        Point3(200, 250, 500),
         Vec3(0.0, 1.0, 0.0),
         width,
         height,
-        500,
-        50,
+        8000,
+        80,
         0.0,
         100.0,
-        Color(0.0, 0.0, 0.0)
+        Color(0.1, 0.07, 0.03)
     );
 
     const unsigned char* data = cam.shot(world);

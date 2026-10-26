@@ -17,6 +17,7 @@ public:
     ) const;
 
     virtual Color emitted(double u, double v, const Point3& p) const;
+    virtual double scattering_pdf(const Ray& r_in, const HitRecord& rec, const Ray& scattered) const;
 };
 
 
@@ -31,6 +32,8 @@ public:
         Color& attenuation,
         Ray& scattered
     ) const override;
+
+    double scattering_pdf(const Ray& r_in, const HitRecord& rec, const Ray& scattered) const override;
 
 private:
     std::shared_ptr<Texture> m_tex;
