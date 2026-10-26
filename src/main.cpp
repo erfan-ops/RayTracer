@@ -124,9 +124,9 @@ void cornell_box2() {
     auto white  = std::make_shared<Lambertian>(Color(.73, .73, .73));
     auto black  = std::make_shared<Lambertian>(Color(.03, .03, .03));
     auto green  = std::make_shared<Lambertian>(Color(.05, .55, .05));
-    auto light  = std::make_shared<DiffuseLight>(Color(10, 10, 10));
-    auto minilight  = std::make_shared<DiffuseLight>(Color(105, 105, 105));
-    auto backwall = std::make_shared<Metal>(Color(0.12, 0.12, 0.12), 0.0);
+    auto light  = std::make_shared<DiffuseLight>(Color(40, 20, 15));
+    auto minilight  = std::make_shared<DiffuseLight>(Color(200, 90, 50));
+    auto backwall = std::make_shared<Metal>(Color(0.2, 0.2, 0.2), 0.0);
 
     world.add(std::make_shared<Quad>(Point3(555,0,0),     Vec3(0,555,0),  Vec3(0,0,555), red));
     world.add(std::make_shared<Quad>(Point3(0,0,0),       Vec3(0,555,0),  Vec3(0,0,555), purple));
@@ -137,8 +137,8 @@ void cornell_box2() {
     // world.add(std::make_shared<Quad>(Point3(-100, -100, -700),     Vec3(700,0,0),  Vec3(0,700,0), white));
 
     double r = 12;
-    world.add(std::make_shared<Sphere>(Point3(0, 350, 277.5), r, minilight));
-    world.add(std::make_shared<Sphere>(Point3(555, 350, 277.5), r, minilight));
+    world.add(std::make_shared<Sphere>(Point3(16, 350, 277.5), r, minilight));
+    world.add(std::make_shared<Sphere>(Point3(555-16, 350, 277.5), r, minilight));
 
     double lamp_ratio = 2;
     world.add(std::make_shared<Quad>(Point3(r*2.0 + 10, 350-r*2.0*lamp_ratio, 277.5-r*lamp_ratio), Vec3(0,r*4.0*lamp_ratio,0),  Vec3(0,0,r*2.0*lamp_ratio), black));
@@ -171,13 +171,13 @@ void cornell_box2() {
     ));
 
 
-    auto box1Mat = std::make_shared<Metal>(Color(0.20, 0.20, 0.20), 0.6);
+    auto box1Mat = std::make_shared<Metal>(Color(0.30, 0.30, 0.30), 0.3);
     std::shared_ptr<Hittable> box1 = box(Point3(0,0,0), Point3(165,165,165), box1Mat);
-    box1 = std::make_shared<RotateY>(box1, 30);
+    box1 = std::make_shared<RotateY>(box1, 25);
     box1 = std::make_shared<Translate>(box1, Vec3(265,0,200));
     world.add(box1);
 
-    auto ballMat = std::make_shared<Metal>(Color(0.25, 0.25, 0.25), 0.0);
+    auto ballMat = std::make_shared<Metal>(Color(0.35, 0.35, 0.35), 0.0);
     Point3 localCenter(82.5, 165.0 + 82.5, 82.5);
 
     // Rotate the local point by 30 degrees, then translate.
@@ -190,7 +190,11 @@ void cornell_box2() {
         200 - std::sin(angle) * localCenter.x() +
             std::cos(angle) * localCenter.z()
     );
-    world.add(std::make_shared<Sphere>(sphereCenter, 82.5, ballMat));
+    world.add(std::make_shared<Sphere>(sphereCenter, 82.5, std::make_shared<Dielectric>(1.5)));
+
+
+    world.add(std::make_shared<Sphere>(Point3(150,70,145), 70, ballMat));
+    world.add(std::make_shared<Sphere>(Point3(300,20,100), 20, std::make_shared<Lambertian>(Color(1.0, 1.0, 0.8))));
 
 
     ImageWrite image{};
@@ -211,20 +215,6 @@ void cornell_box2() {
         100.0,
         Color(0.0, 0.0, 0.0)
     );
-
-    // Camera cam(
-    //     90.0,
-    //     Point3(278, 278, 278),
-    //     Point3(278, 278, 500),
-    //     Vec3(0.0, 1.0, 0.0),
-    //     width,
-    //     height,
-    //     200,
-    //     20,
-    //     0.0,
-    //     100.0,
-    //     Color(0.0, 0.0, 0.0)
-    // );
 
     const unsigned char* data = cam.shot(world);
 

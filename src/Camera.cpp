@@ -68,7 +68,9 @@ Camera::Camera(
     m_defocusDiskU = u * defocus_radius;
     m_defocusDiskV = v * defocus_radius;
 
-    m_pixelSamplesScale = 1.0 / m_samplesPerPixel;
+    m_sqrtSpp = int(std::sqrt(m_samplesPerPixel));
+    m_pixelSamplesScale = 1.0 / (m_sqrtSpp * m_sqrtSpp);
+    m_recipSqrtSpp = 1.0 / m_sqrtSpp;
 }
 
 
@@ -96,9 +98,11 @@ const unsigned char* Camera::shot(HittableList world) const {
 
                     Color pixel_color(0.0, 0.0, 0.0);
 
-                    for (int sample = 0; sample < m_samplesPerPixel; sample++) {
-                        Ray r = get_ray(i, j);
-                        pixel_color += ray_color(r, m_maxDepth, world);
+                    for (int s_j = 0; s_j < m_sqrtSpp; s_j++) {
+                        for (int s_i = 0; s_i < m_sqrtSpp; s_i++) {
+                            Ray r = get_ray(i, j, s_i, s_j);
+                            pixel_color += ray_color(r, m_maxDepth, world);
+                        }
                     }
 
                     m_renderer->write_color(m_pixelSamplesScale * pixel_color, 3ull * (j * m_imageWidth + i));
@@ -110,21 +114,6 @@ const unsigned char* Camera::shot(HittableList world) const {
     for (auto& thread : threads) {
         thread.join();
     }
-    // for (int j = 0; j < m_imageHeight; j++) {
-    //     std::cout << '\r' << j << '/' << height();
-    //     for (int i = 0; i < m_imageWidth; i++) {
-    //         auto pixel_center = m_pixel00Loc + (i * m_pixelDeltaU) + (j * m_pixelDeltaV);
-    //         auto ray_direction = pixel_center - m_center;
-    //         Ray r(m_center, ray_direction);
-
-    //         Color pixel_color(0.0, 0.0, 0.0);
-    //         for (int sample = 0; sample < m_samplesPerPixel; sample++) {
-    //             Ray r = get_ray(i, j);
-    //             pixel_color += ray_color(r, m_maxDepth, world);
-    //         }
-    //         m_renderer->write_color(m_pixelSamplesScale * pixel_color);
-    //     }
-    // }
 
     return m_renderer->get_image();
 }
@@ -160,8 +149,8 @@ Point3 Camera::defocus_disk_sample() const {
     return m_center + (p[0] * m_defocusDiskU) + (p[1] * m_defocusDiskV);
 }
 
-Ray Camera::get_ray(int i, int j) const {
-    Vec3 offset = sample_square();
+Ray Camera::get_ray(int i, int j, int s_i, int s_j) const {
+    auto offset = sample_square_stratified(s_i, s_j);
     Vec3 pixel_sample = m_pixel00Loc
                         + ((i + offset.x()) * m_pixelDeltaU)
                         + ((j + offset.y()) * m_pixelDeltaV);
@@ -171,6 +160,13 @@ Ray Camera::get_ray(int i, int j) const {
     double ray_time = random_double();
 
     return Ray(ray_origin, ray_direction, ray_time);
+}
+
+Vec3 Camera::sample_square_stratified(int s_i, int s_j) const {
+    auto px = ((s_i + random_double()) * m_recipSqrtSpp) - 0.5;
+    auto py = ((s_j + random_double()) * m_recipSqrtSpp) - 0.5;
+
+    return Vec3(px, py, 0);
 }
 
 

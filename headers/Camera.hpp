@@ -27,10 +27,11 @@ public:
     const size_t height() const;
 
 private:
-    Ray get_ray(int i, int j) const;
+    Ray get_ray(int i, int j, int s_i, int s_j) const;
 
     Color ray_color(const Ray& r, const int depth, const Hittable& world) const;
     Point3 defocus_disk_sample() const;
+    Vec3 sample_square_stratified(int s_i, int s_j) const;
 
 private:
     size_t m_imageWidth;
@@ -68,4 +69,7 @@ private:
     double m_focusDist;
 
     Color m_bgColor;
+
+    int m_sqrtSpp;
+    double m_recipSqrtSpp;
 };
