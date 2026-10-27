@@ -1,15 +1,59 @@
 #include <iostream>
+#include <atomic>
+#include <filesystem>
+#include <thread>
+#include <utility>
 
 #include <Image.hpp>
 #include <Renderer.hpp>
 #include <Ray.hpp>
 #include <Camera.hpp>
+#include <PreviewWindow.hpp>
 #include <hittables/Sphere.hpp>
 #include <hittables/Quad.hpp>
 #include <hittables/Triangle.hpp>
 #include <hittables/ConstantMedium.hpp>
 #include <BVH.hpp>
 #include <Texture.hpp>
+
+
+// Renders the scene on a worker thread while a native window shows the image
+// as scanlines complete, then writes the PNG. Closing the window early cancels
+// the render and leaves the previous output file untouched.
+void render_with_preview(
+    const Camera& cam,
+    HittableList world,
+    const std::filesystem::path& output_path
+) {
+    PreviewWindow preview{cam.renderer()};
+
+    std::atomic<bool> cancel{false};
+
+    std::thread render_thread(
+        [&cam, world = std::move(world), &cancel, output_path]() mutable {
+            const unsigned char* data = cam.shot(std::move(world), &cancel);
+
+            // A cancelled render is incomplete and must not replace a good
+            // image on disk.
+            if (cam.renderer().completed_rows() != cam.height()) {
+                return;
+            }
+
+            ImageWrite image{};
+            if (ImageWrite::isFormatAvailable(ImageWrite::Format::PNG)) {
+                image.savePNG(data, cam.width(), cam.height(), output_path,
+                              ImageWrite::PixelFormat::RGB24);
+            }
+            else {
+                std::cerr << "Format was unavailable" << std::endl;
+            }
+        });
+
+    preview.run();
+
+    cancel.store(true, std::memory_order_relaxed);
+    render_thread.join();
+}
 
 
 void simple_light() {
@@ -22,8 +66,6 @@ void simple_light() {
     auto difflight = std::make_shared<DiffuseLight>(Color(4,4,4));
     world.add(std::make_shared<Sphere>(Point3(0.0, 7.0, 0.0), 2.0, difflight));
     world.add(std::make_shared<Quad>(Point3(3,1,-2), Vec3(2,0,0), Vec3(0,2,0), difflight));
-
-    ImageWrite image{};
 
     const size_t width = 1280ull;
     const size_t height = 720ull;
@@ -42,15 +84,7 @@ void simple_light() {
         Color(0.0, 0.0, 0.0)
     );
 
-    const unsigned char* data = cam.shot(world);
-
-    // Save the image
-    if (ImageWrite::isFormatAvailable(ImageWrite::Format::PNG)) {
-        image.savePNG(data, cam.width(), cam.height(), "out/output.png", ImageWrite::PixelFormat::RGB24);
-    }
-    else {
-        std::cerr << "Format was unavailable" << std::endl;
-    }
+    render_with_preview(cam, std::move(world), "out/output.png");
 }
 
 
@@ -85,8 +119,6 @@ void cornell_box() {
     r = 150;
     world.add(std::make_shared<Sphere>(Point3(265+82.5, 247.5, 295+82.5), r, std::make_shared<Dielectric>(1.5)));
 
-    ImageWrite image{};
-
     const size_t width = 500ull;
     const size_t height = 500ull;
 
@@ -104,15 +136,7 @@ void cornell_box() {
         Color(0.0, 0.0, 0.0)
     );
 
-    const unsigned char* data = cam.shot(world);
-
-    // Save the image
-    if (ImageWrite::isFormatAvailable(ImageWrite::Format::PNG)) {
-        image.savePNG(data, cam.width(), cam.height(), "out/output.png", ImageWrite::PixelFormat::RGB24);
-    }
-    else {
-        std::cerr << "Format was unavailable" << std::endl;
-    }
+    render_with_preview(cam, std::move(world), "out/output.png");
 }
 
 
@@ -197,34 +221,24 @@ void cornell_box2() {
     world.add(std::make_shared<Sphere>(Point3(300,20,100), 20, std::make_shared<Lambertian>(Color(1.0, 0.6, 0.2))));
 
 
-    ImageWrite image{};
-
-    const size_t width = 800ull;
-    const size_t height = 800ull;
+    const size_t width = 512ull;
+    const size_t height = 512ull;
 
     Camera cam(
-        55.0,
-        Point3(400, 400, -750),
-        Point3(200, 250, 500),
+        40.0,
+        Point3(278, 278, -750),
+        Point3(278, 278, 500),
         Vec3(0.0, 1.0, 0.0),
         width,
         height,
-        8000,
-        80,
+        1000,
+        50,
         0.0,
         100.0,
         Color(0.1, 0.07, 0.03)
     );
 
-    const unsigned char* data = cam.shot(world);
-
-    // Save the image
-    if (ImageWrite::isFormatAvailable(ImageWrite::Format::PNG)) {
-        image.savePNG(data, cam.width(), cam.height(), "out/output.png", ImageWrite::PixelFormat::RGB24);
-    }
-    else {
-        std::cerr << "Format was unavailable" << std::endl;
-    }
+    render_with_preview(cam, std::move(world), "out/output.png");
 }
 
 
@@ -254,8 +268,6 @@ void cornell_smoke() {
     world.add(std::make_shared<ConstantMedium>(box1, 0.05, Color(0,0,0)));
     world.add(std::make_shared<ConstantMedium>(box2, 0.05, Color(1,1,1)));
 
-    ImageWrite image{};
-
     const size_t width = 600ull;
     const size_t height = 600ull;
 
@@ -273,15 +285,7 @@ void cornell_smoke() {
         Color(0.0, 0.0, 0.0)
     );
 
-    const unsigned char* data = cam.shot(world);
-
-    // Save the image
-    if (ImageWrite::isFormatAvailable(ImageWrite::Format::PNG)) {
-        image.savePNG(data, cam.width(), cam.height(), "out/output.png", ImageWrite::PixelFormat::RGB24);
-    }
-    else {
-        std::cerr << "Format was unavailable" << std::endl;
-    }
+    render_with_preview(cam, std::move(world), "out/output.png");
 }
 
 
@@ -313,8 +317,6 @@ void final_scene(int image_width, int samples_per_pixel, int max_depth) {
 
     world.add(std::make_shared<Sphere>(Point3(260, 150, 45), 50, std::make_shared<Dielectric>(1.5)));
 
-    ImageWrite image{};
-
     const size_t width = image_width;
     const size_t height = image_width;
 
@@ -332,15 +334,52 @@ void final_scene(int image_width, int samples_per_pixel, int max_depth) {
         Color(0.0, 0.0, 0.0)
     );
 
-    const unsigned char* data = cam.shot(world);
+    render_with_preview(cam, std::move(world), "out/output.png");
+}
 
-    // Save the image
-    if (ImageWrite::isFormatAvailable(ImageWrite::Format::PNG)) {
-        image.savePNG(data, cam.width(), cam.height(), "out/output.png", ImageWrite::PixelFormat::RGB24);
-    }
-    else {
-        std::cerr << "Format was unavailable" << std::endl;
-    }
+
+void cornell_box3() {
+    HittableList world;
+
+    auto red   = std::make_shared<Lambertian>(Color(.75, .05, .05));
+    auto blue  = std::make_shared<Lambertian>(Color(.0, .4, .7));
+    auto white = std::make_shared<Lambertian>(Color(.73, .73, .73));
+    auto light = std::make_shared<DiffuseLight>(Color(40, 40, 40));
+
+    world.add(std::make_shared<Quad>(Point3(555,0,0),     Vec3(0,555,0),  Vec3(0,0,555), red));
+    world.add(std::make_shared<Quad>(Point3(0,0,0),       Vec3(0,555,0),  Vec3(0,0,555), blue));
+    world.add(std::make_shared<Quad>(Point3(313,554,302), Vec3(-100,0,0), Vec3(0,0,-75), light, 20)); // light source
+    world.add(std::make_shared<Quad>(Point3(0,0,0),       Vec3(555,0,0),  Vec3(0,0,555), white));
+    world.add(std::make_shared<Quad>(Point3(555,555,555), Vec3(-555,0,0), Vec3(0,0,-555), white));
+    world.add(std::make_shared<Quad>(Point3(0,0,555),     Vec3(555,0,0),  Vec3(0,555,0), white));
+
+
+    std::shared_ptr<Hittable> box1 = box(Point3(0,0,0), Point3(165,330,165), white);
+    box1 = std::make_shared<RotateY>(box1, 45);
+    box1 = std::make_shared<Translate>(box1, Vec3(60,0,250));
+    world.add(box1);
+
+    world.add(std::make_shared<Sphere>(Point3(410, 165.0, 250), 82.5, std::make_shared<Dielectric>(1.5)));
+
+
+    const size_t width = 512ull;
+    const size_t height = 512ull;
+
+    Camera cam(
+        67.0,
+        Point3(278, 278, -400),
+        Point3(278, 278, 500),
+        Vec3(0.0, 1.0, 0.0),
+        width,
+        height,
+        500,
+        50,
+        0.0,
+        100.0,
+        Color(0, 0, 0)
+    );
+
+    render_with_preview(cam, std::move(world), "out/output.png");
 }
 
 
@@ -348,9 +387,10 @@ int main() {
     switch (5) {
         case 1: simple_light();               break;
         case 2: cornell_box();                break;
-        case 5: cornell_box2();                break;
+        case 5: cornell_box2();               break;
         case 3: cornell_smoke();              break;
-        case 4: final_scene(1080, 1080, 108); break;
+        case 4: final_scene(512, 500, 50);    break;
+        case 6: cornell_box3();               break;
     }
 
     return 0;

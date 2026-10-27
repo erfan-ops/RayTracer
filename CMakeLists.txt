@@ -195,6 +195,7 @@ set(APP_SOURCES
     src/main.cpp
     src/Material.cpp
     src/Perlin.cpp
+    src/PreviewWindow.cpp
     src/Ray.cpp
     src/Renderer.cpp
     src/Vec3.cpp
@@ -226,6 +227,7 @@ set(HEADERS
     headers/Interval.hpp
     headers/Material.hpp
     headers/Perlin.hpp
+    headers/PreviewWindow.hpp
     headers/Ray.hpp
     headers/Renderer.hpp
     headers/Texture.hpp
@@ -251,6 +253,8 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
     RayTracerFFmpeg
+    user32
+    gdi32
 )
 
 raytracer_configure_target(${PROJECT_NAME})

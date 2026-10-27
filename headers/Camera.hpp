@@ -4,6 +4,8 @@
 #include <Renderer.hpp>
 #include <HittableList.hpp>
 
+#include <atomic>
+
 class Camera {
 public:
     Camera(
@@ -21,7 +23,15 @@ public:
     );
     ~Camera();
 
-    const unsigned char* shot(HittableList world) const;
+    // Renders world into the camera's image buffer. When cancel is non-null
+    // and becomes true, the worker threads stop at the next pixel; rows that
+    // were finished before that remain valid and marked complete.
+    const unsigned char* shot(
+        HittableList world,
+        const std::atomic<bool>* cancel = nullptr
+    ) const;
+
+    const Renderer& renderer() const;
 
     const size_t width() const;
     const size_t height() const;

@@ -79,18 +79,29 @@ Camera::~Camera() {
 }
 
 
-const unsigned char* Camera::shot(HittableList world) const {
+const unsigned char* Camera::shot(
+    HittableList world,
+    const std::atomic<bool>* cancel
+) const {
     constexpr int nThreads = 12;
 
     std::vector<std::thread> threads;
     threads.reserve(nThreads);
 
     for (int threadIdx = 0; threadIdx < nThreads; threadIdx++) {
-        threads.emplace_back([this,& world, threadIdx, nThreads]() {
+        threads.emplace_back([this, &world, threadIdx, nThreads, cancel]() {
             for (int j = threadIdx; j < m_imageHeight; j += nThreads) {
+                if (cancel != nullptr && cancel->load(std::memory_order_relaxed)) {
+                    return;
+                }
+
                 std::cout << '\r' << j << "                    ";
 
                 for (int i = 0; i < m_imageWidth; i++) {
+                    if (cancel != nullptr && cancel->load(std::memory_order_relaxed)) {
+                        return;
+                    }
+
                     auto pixel_center =
                         m_pixel00Loc + (i * m_pixelDeltaU) + (j * m_pixelDeltaV);
 
@@ -107,6 +118,8 @@ const unsigned char* Camera::shot(HittableList world) const {
 
                     m_renderer->write_color(m_pixelSamplesScale * pixel_color, 3ull * (j * m_imageWidth + i));
                 }
+
+                m_renderer->mark_row_complete(static_cast<size_t>(j));
             }
         });
     }
@@ -172,6 +185,8 @@ Vec3 Camera::sample_square_stratified(int s_i, int s_j) const {
     return Vec3(px, py, 0);
 }
 
+
+const Renderer& Camera::renderer() const { return *m_renderer; }
 
 const size_t Camera::width() const { return m_imageWidth; }
 const size_t Camera::height() const { return m_imageHeight; }
