@@ -145,20 +145,20 @@ void cornell_box2() {
 
     auto red    = std::make_shared<Lambertian>(Color(.75, .05, .05));
     auto purple = std::make_shared<Lambertian>(Color(.4, .05, .7));
-    auto white  = std::make_shared<Lambertian>(Color(.73, .73, .73));
+    auto white  = std::make_shared<Lambertian>(Color(.83, .83, .83));
     auto black  = std::make_shared<Lambertian>(Color(.03, .03, .03));
     auto green  = std::make_shared<Lambertian>(Color(.05, .55, .05));
     auto light  = std::make_shared<DiffuseLight>(Color(40, 20, 15));
     auto minilight = std::make_shared<DiffuseLight>(Color(200, 90, 50));
-    auto backwall = std::make_shared<Metal>(Color(0.2, 0.2, 0.2), 0.0);
+    auto backwall = std::make_shared<Metal>(Color(0.3, 0.3, 0.3), 0.01);
 
     world.add(std::make_shared<Quad>(Point3(555,0,0),     Vec3(0,555,0),  Vec3(0,0,555), red));
     world.add(std::make_shared<Quad>(Point3(0,0,0),       Vec3(0,555,0),  Vec3(0,0,555), purple));
-    world.add(std::make_shared<Quad>(Point3(343,554,332), Vec3(-130,0,0), Vec3(0,0,-105), light, 20)); // light source
+    // world.add(std::make_shared<Quad>(Point3(343,554,332), Vec3(-130,0,0), Vec3(0,0,-105), light, 20)); // light source
     world.add(std::make_shared<Quad>(Point3(-5000,0,-5000), Vec3(10555,0,0),  Vec3(0,0,10555), green));
     world.add(std::make_shared<Quad>(Point3(555,555,555), Vec3(-555,0,0), Vec3(0,0,-555), white));
     world.add(std::make_shared<Quad>(Point3(0,0,555),     Vec3(555,0,0),  Vec3(0,555,0), backwall));
-    // world.add(std::make_shared<Quad>(Point3(-100, -100, -700),     Vec3(700,0,0),  Vec3(0,700,0), white));
+    // world.add(std::make_shared<Quad>(Point3(0, 0, 0),     Vec3(555, 0, 0),  Vec3(0,555,0), backwall));
 
     double r = 12;
     world.add(std::make_shared<Sphere>(Point3(16, 350, 277.5), r, minilight));
@@ -218,24 +218,23 @@ void cornell_box2() {
 
 
     world.add(std::make_shared<Sphere>(Point3(150,70,145), 70, ballMat));
-    world.add(std::make_shared<Sphere>(Point3(300,20,100), 20, std::make_shared<Lambertian>(Color(1.0, 0.6, 0.2))));
 
 
-    const size_t width = 512ull;
-    const size_t height = 512ull;
+    const size_t width = 256ull;
+    const size_t height = 256ull;
 
     Camera cam(
-        40.0,
+        70.0,
         Point3(278, 278, -750),
-        Point3(278, 278, 500),
+        Point3(278, 278, 278),
         Vec3(0.0, 1.0, 0.0),
         width,
         height,
-        1000,
-        50,
+        200,
+        30,
         0.0,
         100.0,
-        Color(0.1, 0.07, 0.03)
+        Color(0.8, 0.8, 0.9)
     );
 
     render_with_preview(cam, std::move(world), "out/output.png");
@@ -383,14 +382,155 @@ void cornell_box3() {
 }
 
 
+void cornell_box4() {
+    HittableList world;
+
+    auto white  = std::make_shared<Lambertian>(Color(.8, .8, .8));
+    auto light  = std::make_shared<DiffuseLight>(Color(40, 20, 15));
+
+    world.add(std::make_shared<Quad>(Point3(555,0,0), Vec3(0,555,0), Vec3(0,0,555), white)); // left wall
+    world.add(std::make_shared<Quad>(Point3(554,0,0), Vec3(0,555,0), Vec3(0,0,555), std::make_shared<Dielectric>(1.5)));
+
+    world.add(std::make_shared<Quad>(Point3(0,0,0), Vec3(0,555,0), Vec3(0,0,555), white)); // right wall
+    world.add(std::make_shared<Quad>(Point3(1,0,0), Vec3(0,555,0), Vec3(0,0,555), std::make_shared<Dielectric>(1.5)));
+
+    world.add(std::make_shared<Quad>(Point3(0,0,0), Vec3(555,0,0), Vec3(0,0,555), std::make_shared<Metal>(Color(0.5, 0.5, 0.5), 0.0))); // floor
+
+    world.add(std::make_shared<Quad>(Point3(555,555,555), Vec3(-555,0,0), Vec3(0,0,-555), std::make_shared<Lambertian>(std::make_shared<CheckerTexture>(150, Color(1.0, 1.0, 1.0), Color(0.7, 0.7, 0.7))))); // ceiling
+
+    world.add(std::make_shared<Quad>(Point3(0,0,555), Vec3(555,0,0), Vec3(0,555,0), white)); // back wall
+    world.add(std::make_shared<Quad>(Point3(0,0,554), Vec3(555,0,0), Vec3(0,555,0), std::make_shared<Dielectric>(1.5)));
+
+    // world.add(std::make_shared<Quad>(Point3(203,554,203), Vec3(150,0,0), Vec3(0,0,150), std::make_shared<DiffuseLight>(Color(3.0, 3.0, 3.0)), 20)); // light source
+
+
+    double r = 100;
+    world.add(std::make_shared<Sphere>(Point3(278, 278, 278), r, std::make_shared<DiffuseLight>(Color(0.8, 2.0, 2.5))));
+
+    size_t nBalls = 8;
+    double radius = 125;
+    double ox = 278;
+    double oz = 278 + radius;
+    for (size_t i = 0; i < nBalls; i++) {
+        // linear interpolation
+        double angle = std::numbers::pi * 2.0 * i / nBalls;
+
+        double lx = ox - 278;
+        double lz = oz - 278;
+        double x = lx * std::cos(angle) - lz * std::sin(angle) + 278;
+        double z = lx * std::sin(angle) + lz * std::cos(angle) + 278;
+
+        world.add(std::make_shared<Sphere>(Point3(x, 278, z), 25, std::make_shared<Dielectric>(1.5)));
+    }
+
+    double oy = 278 + radius;
+    for (size_t i = 0; i < nBalls; i++) {
+        if (i == 2 || i == 6)
+            continue;
+        // linear interpolation
+        double angle = std::numbers::pi * 2.0 * i / nBalls;
+
+        double lx = ox - 278;
+        double ly = oy - 278;
+        double x = lx * std::cos(angle) - ly * std::sin(angle) + 278;
+        double y = lx * std::sin(angle) + ly * std::cos(angle) + 278;
+
+        world.add(std::make_shared<Sphere>(Point3(x, y, 278), 25, std::make_shared<Dielectric>(1.5)));
+    }
+
+    oy = 278;
+    for (size_t i = 0; i < nBalls; i++) {
+        if (!(i & 1))
+            continue;
+        // linear interpolation
+        double angle = std::numbers::pi * 2.0 * i / nBalls;
+
+        double lz = oz - 278;
+        double ly = oy - 278;
+        double z = lz * std::cos(angle) - ly * std::sin(angle) + 278;
+        double y = lz * std::sin(angle) + ly * std::cos(angle) + 278;
+
+        world.add(std::make_shared<Sphere>(Point3(278, y, z), 25, std::make_shared<Dielectric>(1.5)));
+    }
+
+
+    // second layer
+    radius = 200;
+    ox = 278;
+    oz = 278 + radius;
+    for (size_t i = 0; i < nBalls; i++) {
+        // linear interpolation
+        double angle = std::numbers::pi * 2.0 * i / nBalls;
+
+        double lx = ox - 278;
+        double lz = oz - 278;
+        double x = lx * std::cos(angle) - lz * std::sin(angle) + 278;
+        double z = lx * std::sin(angle) + lz * std::cos(angle) + 278;
+
+        world.add(std::make_shared<Sphere>(Point3(x, 278, z), 25, std::make_shared<Dielectric>(1.5)));
+    }
+
+    oy = 278 + radius;
+    for (size_t i = 0; i < nBalls; i++) {
+        if (i == 2 || i == 6)
+            continue;
+        // linear interpolation
+        double angle = std::numbers::pi * 2.0 * i / nBalls;
+
+        double lx = ox - 278;
+        double ly = oy - 278;
+        double x = lx * std::cos(angle) - ly * std::sin(angle) + 278;
+        double y = lx * std::sin(angle) + ly * std::cos(angle) + 278;
+
+        world.add(std::make_shared<Sphere>(Point3(x, y, 278), 25, std::make_shared<Dielectric>(1.5)));
+    }
+
+    oy = 278;
+    for (size_t i = 0; i < nBalls; i++) {
+        if (!(i & 1))
+            continue;
+        // linear interpolation
+        double angle = std::numbers::pi * 2.0 * i / nBalls;
+
+        double lz = oz - 278;
+        double ly = oy - 278;
+        double z = lz * std::cos(angle) - ly * std::sin(angle) + 278;
+        double y = lz * std::sin(angle) + ly * std::cos(angle) + 278;
+
+        world.add(std::make_shared<Sphere>(Point3(278, y, z), 25, std::make_shared<Dielectric>(1.5)));
+    }
+
+
+    const size_t width = 400ull;
+    const size_t height = 400ull;
+
+    Camera cam(
+        40.0,
+        Point3(150, 380, -660),
+        Point3(278, 278, 278),
+        Vec3(0.0, 1.0, 0.0),
+        width,
+        height,
+        300,
+        30,
+        0.0,
+        100.0,
+        Color(0.0, 0.0, 0.0)
+    );
+
+    render_with_preview(cam, std::move(world), "out/output.png");
+}
+
+
 int main() {
-    switch (5) {
+    switch (7) {
         case 1: simple_light();               break;
         case 2: cornell_box();                break;
         case 5: cornell_box2();               break;
         case 3: cornell_smoke();              break;
         case 4: final_scene(512, 500, 50);    break;
         case 6: cornell_box3();               break;
+        case 7: cornell_box4();               break;
     }
 
     return 0;

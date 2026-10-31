@@ -196,6 +196,7 @@ set(APP_SOURCES
     src/Material.cpp
     src/Perlin.cpp
     src/PreviewWindow.cpp
+    src/ProgressManager.cpp
     src/Ray.cpp
     src/Renderer.cpp
     src/Vec3.cpp
@@ -228,6 +229,7 @@ set(HEADERS
     headers/Material.hpp
     headers/Perlin.hpp
     headers/PreviewWindow.hpp
+    headers/ProgressManager.hpp
     headers/Ray.hpp
     headers/Renderer.hpp
     headers/Texture.hpp

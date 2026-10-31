@@ -4,7 +4,10 @@
 #include <Common.hpp>
 #include <Interval.hpp>
 #include <Material.hpp>
+#include <ProgressManager.hpp>
 
+#include <exception>
+#include <mutex>
 #include <thread>
 
 
@@ -83,50 +86,103 @@ const unsigned char* Camera::shot(
     HittableList world,
     const std::atomic<bool>* cancel
 ) const {
-    constexpr int nThreads = 12;
+    constexpr int nThreads = 4;
+
+    ProgressManager progress(
+        m_imageWidth, m_imageHeight, m_samplesPerPixel, nThreads);
+
+    // Row j belongs to worker j % nThreads, so each worker's workload is known
+    // before it starts and the per-thread totals sum to the image height.
+    for (int threadIdx = 0; threadIdx < nThreads; ++threadIdx) {
+        const size_t thread = static_cast<size_t>(threadIdx);
+        size_t assignedRows = 0;
+        if (thread < m_imageHeight) {
+            assignedRows =
+                (m_imageHeight - thread + static_cast<size_t>(nThreads) - 1) /
+                static_cast<size_t>(nThreads);
+        }
+        progress.set_worker_total(threadIdx, assignedRows);
+    }
+
+    progress.start();
 
     std::vector<std::thread> threads;
     threads.reserve(nThreads);
 
+    std::exception_ptr workerError;
+    std::mutex errorMutex;
+
+    const auto is_cancelled = [cancel]() {
+        return cancel != nullptr && cancel->load(std::memory_order_relaxed);
+    };
+
     for (int threadIdx = 0; threadIdx < nThreads; threadIdx++) {
-        threads.emplace_back([this, &world, threadIdx, nThreads, cancel]() {
-            for (int j = threadIdx; j < m_imageHeight; j += nThreads) {
-                if (cancel != nullptr && cancel->load(std::memory_order_relaxed)) {
-                    return;
-                }
+        threads.emplace_back(
+            [this, &world, threadIdx, nThreads, &progress,
+             &workerError, &errorMutex, is_cancelled]() {
+                try {
+                    for (int j = threadIdx; j < m_imageHeight; j += nThreads) {
+                        if (is_cancelled()) {
+                            progress.stop_worker(threadIdx);
+                            return;
+                        }
 
-                std::cout << '\r' << j << "                    ";
+                        for (int i = 0; i < m_imageWidth; i++) {
+                            if (is_cancelled()) {
+                                progress.stop_worker(threadIdx);
+                                return;
+                            }
 
-                for (int i = 0; i < m_imageWidth; i++) {
-                    if (cancel != nullptr && cancel->load(std::memory_order_relaxed)) {
-                        return;
+                            auto pixel_center =
+                                m_pixel00Loc + (i * m_pixelDeltaU) + (j * m_pixelDeltaV);
+
+                            auto ray_direction = pixel_center - m_center;
+
+                            Color pixel_color(0.0, 0.0, 0.0);
+
+                            for (int s_j = 0; s_j < m_sqrtSpp; s_j++) {
+                                for (int s_i = 0; s_i < m_sqrtSpp; s_i++) {
+                                    Ray r = get_ray(i, j, s_i, s_j);
+                                    pixel_color += ray_color(r, m_maxDepth, world);
+                                }
+                            }
+
+                            m_renderer->write_color(
+                                m_pixelSamplesScale * pixel_color,
+                                3ull * (j * m_imageWidth + i));
+                        }
+
+                        m_renderer->mark_row_complete(static_cast<size_t>(j));
+                        progress.add_completed_rows(threadIdx);
                     }
 
-                    auto pixel_center =
-                        m_pixel00Loc + (i * m_pixelDeltaU) + (j * m_pixelDeltaV);
-
-                    auto ray_direction = pixel_center - m_center;
-
-                    Color pixel_color(0.0, 0.0, 0.0);
-
-                    for (int s_j = 0; s_j < m_sqrtSpp; s_j++) {
-                        for (int s_i = 0; s_i < m_sqrtSpp; s_i++) {
-                            Ray r = get_ray(i, j, s_i, s_j);
-                            pixel_color += ray_color(r, m_maxDepth, world);
+                    progress.finish_worker(threadIdx);
+                }
+                catch (...) {
+                    {
+                        std::lock_guard<std::mutex> lock(errorMutex);
+                        if (workerError == nullptr) {
+                            workerError = std::current_exception();
                         }
                     }
-
-                    m_renderer->write_color(m_pixelSamplesScale * pixel_color, 3ull * (j * m_imageWidth + i));
+                    progress.fail_worker(threadIdx);
                 }
-
-                m_renderer->mark_row_complete(static_cast<size_t>(j));
-            }
-        });
+            });
     }
 
     for (auto& thread : threads) {
         thread.join();
     }
+
+    if (workerError != nullptr) {
+        progress.stop(ProgressManager::Outcome::Failed);
+        std::rethrow_exception(workerError);
+    }
+
+    const bool completed = m_renderer->completed_rows() == m_imageHeight;
+    progress.stop(completed
+        ? ProgressManager::Outcome::Completed
+        : ProgressManager::Outcome::Cancelled);
 
     return m_renderer->get_image();
 }
