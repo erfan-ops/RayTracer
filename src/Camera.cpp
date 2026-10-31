@@ -86,7 +86,7 @@ const unsigned char* Camera::shot(
     HittableList world,
     const std::atomic<bool>* cancel
 ) const {
-    constexpr int nThreads = 4;
+    constexpr int nThreads = 8;
 
     ProgressManager progress(
         m_imageWidth, m_imageHeight, m_samplesPerPixel, nThreads);

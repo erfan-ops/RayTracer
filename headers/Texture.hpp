@@ -67,12 +67,16 @@ private:
 
 class ImageTexture : public Texture {
 public:
-    ImageTexture(const std::string& imagePath);
+    ImageTexture(
+        const std::string& imagePath,
+        const std::string& ambientOcclusionPath
+    );
 
     Color value(double u, double v, const Point3& p) const override;
 
 private:
     ImageRead img;
+    ImageRead ao;
 };
 
 class NoiseTexture : public Texture {
